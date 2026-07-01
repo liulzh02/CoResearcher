@@ -4,6 +4,7 @@ from typing import Any, Literal, TypedDict
 
 from langgraph.graph import END, START, StateGraph
 
+from coresearcher.context import ContextBuilder, ContextPack
 from coresearcher.domain.events import ResearchEvent, ResearchEventType
 from coresearcher.domain.state import (
     Claim,
@@ -25,6 +26,7 @@ class DirectorGraphState(TypedDict, total=False):
     plan: list[str]
     subagent_tasks: list[SubagentTask]
     subagent_results: list[dict[str, Any]]
+    context_pack: ContextPack
     final_response: str
     route: Literal["clarify", "delegate", "answer"]
 
@@ -47,9 +49,18 @@ def _node_event(state: DirectorGraphState, message: str) -> ResearchEvent:
 
 def _load_context(state: DirectorGraphState) -> DirectorGraphState:
     research_state = state.get("research_state") or ResearchState()
+    context_pack = ContextBuilder().build_director_pack(
+        latest_user_message=state["user_message"],
+        research_state=research_state,
+    )
     events = state.get("events", [])
     events.append(_node_event(state, "Loaded research context."))
-    return {**state, "research_state": research_state, "events": events}
+    return {
+        **state,
+        "research_state": research_state,
+        "context_pack": context_pack,
+        "events": events,
+    }
 
 
 def _director_reasoning(state: DirectorGraphState) -> DirectorGraphState:
@@ -246,4 +257,3 @@ def make_research_director():
     graph.add_edge("synthesis", "event_emission")
     graph.add_edge("event_emission", END)
     return graph.compile()
-

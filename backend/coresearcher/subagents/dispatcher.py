@@ -5,8 +5,9 @@ from typing import Any
 
 from pydantic import BaseModel, Field
 
+from coresearcher.context import ContextBuilder, ContextPack
 from coresearcher.domain.events import ResearchEvent, ResearchEventType
-from coresearcher.domain.state import SourceLocator, new_id
+from coresearcher.domain.state import SourceLocator, SourceType, new_id
 from coresearcher.subagents.registry import SubagentRegistry, default_subagent_registry
 
 
@@ -26,6 +27,7 @@ class SubagentTaskResult(BaseModel):
     evidence_ids: list[str] = Field(default_factory=list)
     limitations: list[str] = Field(default_factory=list)
     status: str = "completed"
+    context_pack: ContextPack | None = None
 
 
 class SubagentDispatcher:
@@ -33,9 +35,11 @@ class SubagentDispatcher:
         self,
         registry: SubagentRegistry | None = None,
         max_concurrency: int = 3,
+        context_builder: ContextBuilder | None = None,
     ) -> None:
         self.registry = registry or default_subagent_registry()
         self._semaphore = asyncio.Semaphore(max_concurrency)
+        self.context_builder = context_builder or ContextBuilder()
 
     async def dispatch(
         self,
@@ -48,6 +52,10 @@ class SubagentDispatcher:
         if config.allow_subagent_delegation:
             raise ValueError("Recursive subagent delegation is disabled for MVP")
 
+        context_pack = self.context_builder.build_subagent_pack(
+            task=task,
+            latest_user_message=task.description,
+        )
         events = [
             ResearchEvent(
                 type=ResearchEventType.SUBAGENT_STARTED,
@@ -65,7 +73,16 @@ class SubagentDispatcher:
                 task_id=task.id,
                 subagent_name=config.name,
                 summary=f"{config.name} completed task: {task.description}",
+                source_locators=[
+                    SourceLocator(
+                        type=SourceType.TOOL_CALL,
+                        id=task.id,
+                        title=f"Subagent task: {config.name}",
+                        metadata={"subagent": config.name},
+                    )
+                ],
                 limitations=["MVP fake subagent runtime; no live provider or external tools used."],
+                context_pack=context_pack,
             )
         events.append(
             ResearchEvent(
@@ -83,6 +100,15 @@ class SubagentDispatcher:
         )
         return result, events
 
+    def run_sync(
+        self,
+        task: SubagentTask,
+        *,
+        thread_id: str,
+        run_id: str,
+    ) -> tuple[SubagentTaskResult, list[ResearchEvent]]:
+        return asyncio.run(self.dispatch(task, thread_id=thread_id, run_id=run_id))
+
     async def dispatch_many(
         self,
         tasks: list[SubagentTask],
@@ -99,4 +125,3 @@ class SubagentDispatcher:
             results.append(result)
             events.extend(task_events)
         return results, events
-

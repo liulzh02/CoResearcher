@@ -73,3 +73,42 @@ tools:
   skills:
     builtin_root: backend/coresearcher/skills/builtin
     storage_root: storage/skills
+
+context:
+  default_prompt_budget: 12000
+  completion_reserve: 2000
+  director_prompt_budget: 12000
+  subagent_prompt_budget: 8000
+  per_section_limits:
+    history: 2000
+    memory: 2000
+    evidence: 3000
+    tool_output: 1500
+    skill_context: 1500
+  tool_output_char_limit: 6000
+  long_document_snippet_limit: 1200
+  emergency_summary_enabled: true
+  compression_thresholds:
+    level_1: 0.75
+    level_2: 1.10
+    level_3: 1.55
+    level_4: 2.25
+    level_5: 3.20
+  reserved_tags:
+    - memory-context
+    - research-state
+    - evidence-context
+    - tool-output
+    - skill-context
+    - omitted-context
+    - latest-user-message
+    - subagent-task
+    - system
+    - developer
+  renderer_blocks:
+    memory: memory-context
+    research_state: research-state
+    evidence: evidence-context
+    tool_output: tool-output
+    skill: skill-context
+    omitted: omitted-context

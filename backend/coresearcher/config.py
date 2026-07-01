@@ -7,6 +7,7 @@ from typing import Any
 import yaml
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
+from coresearcher.context.rendering import DEFAULT_RESERVED_CONTEXT_TAGS
 from coresearcher.tools.registry import ToolGroup
 
 
@@ -84,6 +85,45 @@ class SkillStorageSettings(BaseModel):
     storage_root: Path = Path("storage/skills")
 
 
+class ContextSettings(BaseModel):
+    default_prompt_budget: int = 12_000
+    completion_reserve: int = 2_000
+    director_prompt_budget: int = 12_000
+    subagent_prompt_budget: int = 8_000
+    per_section_limits: dict[str, int] = Field(
+        default_factory=lambda: {
+            "history": 2_000,
+            "memory": 2_000,
+            "evidence": 3_000,
+            "tool_output": 1_500,
+            "skill_context": 1_500,
+        }
+    )
+    tool_output_char_limit: int = 6_000
+    long_document_snippet_limit: int = 1_200
+    emergency_summary_enabled: bool = True
+    compression_thresholds: dict[str, float] = Field(
+        default_factory=lambda: {
+            "level_1": 0.75,
+            "level_2": 1.10,
+            "level_3": 1.55,
+            "level_4": 2.25,
+            "level_5": 3.20,
+        }
+    )
+    reserved_tags: list[str] = Field(default_factory=lambda: list(DEFAULT_RESERVED_CONTEXT_TAGS))
+    renderer_blocks: dict[str, str] = Field(
+        default_factory=lambda: {
+            "memory": "memory-context",
+            "research_state": "research-state",
+            "evidence": "evidence-context",
+            "tool_output": "tool-output",
+            "skill": "skill-context",
+            "omitted": "omitted-context",
+        }
+    )
+
+
 def _default_search_providers() -> dict[str, ExternalProviderSettings]:
     return {
         "fake": ExternalProviderSettings(enabled=False),
@@ -136,6 +176,7 @@ class AppSettings(BaseModel):
     security: SecuritySettings = Field(default_factory=SecuritySettings)
     sandbox: SandboxSettings = Field(default_factory=SandboxSettings)
     tools: ToolRuntimeSettings = Field(default_factory=ToolRuntimeSettings)
+    context: ContextSettings = Field(default_factory=ContextSettings)
 
 
 def _deep_merge(base: dict[str, Any], override: dict[str, Any]) -> dict[str, Any]:
