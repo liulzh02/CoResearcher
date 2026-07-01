@@ -1,0 +1,5 @@
+# 中文说明：该文件是 OpenSpec 变更的元数据配置。
+# schema 表示当前变更使用的工作流类型；created 表示创建日期。
+# 请勿随意修改字段值，否则可能影响 OpenSpec CLI 解析。
+schema: spec-driven
+created: 2026-06-30
