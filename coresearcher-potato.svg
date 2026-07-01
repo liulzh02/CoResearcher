@@ -1,0 +1,30 @@
+<svg width="240" height="240" viewBox="0 0 240 240" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="title desc">
+  <title id="title">CoResearcher potato research icon</title>
+  <desc id="desc">A warm potato mascot with a sprout, research lens, and connected knowledge nodes.</desc>
+  <rect width="240" height="240" rx="48" fill="#F6F1E8"/>
+  <circle cx="70" cy="186" r="16" fill="#D7E8D0"/>
+  <circle cx="188" cy="62" r="18" fill="#DCE8F7"/>
+  <circle cx="198" cy="178" r="10" fill="#F1D4B8"/>
+  <path d="M117 47C95.5 48.5 76.7 59.2 65.8 77.4C54.7 96 52 124.2 60.9 148.4C70.6 174.8 91.6 190.4 118 190.4C148 190.4 171.2 172.1 180.6 143.1C188.7 118 183.7 91.7 168 73.3C155.9 59.2 137.6 45.6 117 47Z" fill="#C98B56"/>
+  <path d="M117.8 56.4C98.7 57.8 82.4 67.5 73.1 83.1C63.2 99.5 61 124.5 68.9 146C77.2 168.5 95 181.8 117.7 181.8C143.6 181.8 163.7 166.1 171.8 141.1C178.8 119.4 174.6 96.4 161 80.6C150.5 68.3 135.7 55.1 117.8 56.4Z" fill="#D79A62"/>
+  <path d="M106 52C112 34 130 24 149 26C143 43 125 54 106 52Z" fill="#5FA66A"/>
+  <path d="M115 53C112 37 118 22 131 12C139 27 134 45 115 53Z" fill="#79BD7F"/>
+  <path d="M116 54C119 39 132 29 149 28" stroke="#2F7D4A" stroke-width="5" stroke-linecap="round"/>
+  <circle cx="96" cy="96" r="5" fill="#8E5B35"/>
+  <circle cx="133" cy="78" r="4" fill="#8E5B35"/>
+  <circle cx="91" cy="142" r="4" fill="#8E5B35"/>
+  <circle cx="147" cy="146" r="5" fill="#8E5B35"/>
+  <path d="M90 118C100.5 128.7 119.3 131.9 135 121" stroke="#704528" stroke-width="6" stroke-linecap="round"/>
+  <circle cx="93" cy="109" r="16" fill="#FFF9EF" stroke="#3A405A" stroke-width="6"/>
+  <circle cx="143" cy="109" r="16" fill="#FFF9EF" stroke="#3A405A" stroke-width="6"/>
+  <path d="M109 109H127" stroke="#3A405A" stroke-width="6" stroke-linecap="round"/>
+  <path d="M61 112C70 105 76 105 82 109" stroke="#3A405A" stroke-width="6" stroke-linecap="round"/>
+  <path d="M159 109C168 103 176 105 181 112" stroke="#3A405A" stroke-width="6" stroke-linecap="round"/>
+  <circle cx="167" cy="156" r="20" fill="#FFFFFF" fill-opacity="0.78" stroke="#2F5F87" stroke-width="6"/>
+  <path d="M181.5 170.5L197 186" stroke="#2F5F87" stroke-width="8" stroke-linecap="round"/>
+  <circle cx="164" cy="153" r="4" fill="#2F5F87"/>
+  <circle cx="176" cy="159" r="4" fill="#2F5F87"/>
+  <path d="M168 155L176 159" stroke="#2F5F87" stroke-width="3" stroke-linecap="round"/>
+  <path d="M54 200H186" stroke="#8AA38B" stroke-width="8" stroke-linecap="round"/>
+  <path d="M81 207H158" stroke="#B3C6A6" stroke-width="5" stroke-linecap="round"/>
+</svg>
