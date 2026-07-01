@@ -42,6 +42,8 @@ class KnowledgeBaseAdapter(Protocol):
 
     async def link_note_to_state(self, note_id: str, state_object_id: str) -> None: ...
 
+    async def retrieve_memory_notes(self, query: str) -> list[KnowledgeBaseNote]: ...
+
 
 class FakeKnowledgeBaseAdapter:
     def __init__(self) -> None:
@@ -74,6 +76,18 @@ class FakeKnowledgeBaseAdapter:
 
     async def link_note_to_state(self, note_id: str, state_object_id: str) -> None:
         self.links.setdefault(state_object_id, []).append(note_id)
+
+    async def retrieve_memory_notes(self, query: str) -> list[KnowledgeBaseNote]:
+        lowered = query.lower()
+        if not lowered.strip():
+            return list(self.notes.values())
+        return [
+            note
+            for note in self.notes.values()
+            if lowered in note.title.lower()
+            or lowered in note.content.lower()
+            or any(lowered in str(value).lower() for value in note.metadata.values())
+        ]
 
 
 class ObsidianMcpKnowledgeBaseAdapter:
@@ -124,3 +138,10 @@ class ObsidianMcpKnowledgeBaseAdapter:
             {"note_id": note_id, "state_object_id": state_object_id},
         )
 
+    async def retrieve_memory_notes(self, query: str) -> list[KnowledgeBaseNote]:
+        result = await self.mcp_client.call_tool(
+            self.server_name,
+            "retrieve_memory_notes",
+            {"query": query},
+        )
+        return [KnowledgeBaseNote.model_validate(item) for item in result]

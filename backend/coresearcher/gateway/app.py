@@ -1,6 +1,8 @@
 from __future__ import annotations
 
+import os
 from collections.abc import AsyncIterator
+from pathlib import Path
 
 from fastapi import Depends, FastAPI, HTTPException, Request
 from fastapi.responses import StreamingResponse
@@ -17,6 +19,8 @@ from coresearcher.gateway.schemas import (
     UpdateStateRequest,
 )
 from coresearcher.knowledge_base import FakeKnowledgeBaseAdapter, KnowledgeBaseNote
+from coresearcher.memory import MemoryRecordType, MemoryScope, MemoryService, ProvenanceReference
+from coresearcher.memory.config import MemorySettings
 from coresearcher.models import ModelFactory
 from coresearcher.services import ResearchService
 from coresearcher.subagents import default_subagent_registry
@@ -32,6 +36,10 @@ def _service(request: Request) -> ResearchService:
     return request.app.state.research_service
 
 
+def _memory_service(request: Request) -> MemoryService:
+    return request.app.state.memory_service
+
+
 def _safe_error(exc: Exception) -> StructuredError:
     return StructuredError(error=exc.__class__.__name__, detail=str(exc)[:300])
 
@@ -42,6 +50,15 @@ def create_app() -> FastAPI:
     app.state.settings = settings
     app.state.research_service = ResearchService()
     app.state.kb = FakeKnowledgeBaseAdapter()
+    memory_root = Path(os.getenv("CORESEARCHER_MEMORY_ROOT", "memory"))
+    sqlite_path = os.getenv("CORESEARCHER_MEMORY_SQLITE_PATH")
+    app.state.memory_service = MemoryService(
+        settings=MemorySettings(
+            memory_root=memory_root,
+            sqlite_path=Path(sqlite_path) if sqlite_path else None,
+        ),
+        knowledge_base=app.state.kb,
+    )
 
     @app.get("/health")
     async def health() -> dict[str, str]:
@@ -199,5 +216,66 @@ def create_app() -> FastAPI:
     @app.post("/knowledge-base/notes")
     async def write_kb_note(note: KnowledgeBaseNote, request: Request) -> dict:
         return {"note": await request.app.state.kb.write_note(note)}
+
+    @app.get("/memory/global")
+    async def get_global_memory(
+        memory: MemoryService = Depends(_memory_service),
+    ) -> dict:
+        return {"memory": memory.store.load_global_memory()}
+
+    @app.get("/memory/research/{research_id}")
+    async def get_research_memory(
+        research_id: str,
+        memory: MemoryService = Depends(_memory_service),
+    ) -> dict:
+        return {"memory": memory.store.load_research_memory(research_id)}
+
+    @app.get("/memory/research/{research_id}/candidates")
+    async def get_research_candidates(
+        research_id: str,
+        memory: MemoryService = Depends(_memory_service),
+    ) -> dict:
+        return {"candidates": memory.store.load_candidates(MemoryScope.RESEARCH, research_id)}
+
+    @app.post("/memory/candidates")
+    async def create_memory_candidate(
+        body: dict,
+        memory: MemoryService = Depends(_memory_service),
+    ) -> dict:
+        provenance = [
+            ProvenanceReference.model_validate(item)
+            for item in body.get("provenance", [])
+        ]
+        candidate = memory.create_candidate(
+            text=body["text"],
+            target_scope=MemoryScope(body["target_scope"]),
+            record_type=MemoryRecordType(body["record_type"]),
+            confidence=body.get("confidence", 0.5),
+            provenance=provenance,
+            research_id=body.get("research_id"),
+        )
+        return {"candidate": candidate}
+
+    @app.post("/memory/candidates/{candidate_id}/promote")
+    async def promote_memory_candidate(
+        candidate_id: str,
+        memory: MemoryService = Depends(_memory_service),
+    ) -> dict:
+        return {"candidate": memory.promote_candidate(candidate_id)}
+
+    @app.post("/memory/candidates/{candidate_id}/reject")
+    async def reject_memory_candidate(
+        candidate_id: str,
+        memory: MemoryService = Depends(_memory_service),
+    ) -> dict:
+        return {"candidate": memory.reject_candidate(candidate_id)}
+
+    @app.get("/memory/research/{research_id}/inspect")
+    async def inspect_memory(
+        research_id: str,
+        query: str = "",
+        memory: MemoryService = Depends(_memory_service),
+    ) -> dict:
+        return await memory.inspect_memory(research_id=research_id, query=query)
 
     return app
