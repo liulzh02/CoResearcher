@@ -1,0 +1,22 @@
+environment: local
+
+persistence:
+  backend: json
+  data_dir: .coresearcher/data
+
+gateway:
+  title: CoResearcher API
+  cors_origins: []
+
+security:
+  default_user_id: local-user
+  max_subagent_concurrency: 3
+  allowed_mcp_servers: []
+
+sandbox:
+  timeout_seconds: 30
+  network_enabled: false
+  artifact_root: .coresearcher/artifacts
+  allowed_roots:
+    - .coresearcher/workspaces
+

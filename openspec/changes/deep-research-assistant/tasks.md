@@ -1,93 +1,93 @@
 ## 1. Project Scaffold
 
-- [ ] 1.1 Create the Python backend project structure with package metadata, lint/test configuration, and a minimal application entry point.
-- [ ] 1.2 Add initial dependencies for FastAPI, Pydantic, LangGraph/LangChain runtime, async server execution, and tests.
-- [ ] 1.3 Add environment/config loading that reads secrets only from environment variables and never commits provider credentials.
-- [ ] 1.4 Add a minimal health endpoint and smoke test proving the backend starts.
+- [x] 1.1 Create the Python backend project structure with package metadata, lint/test configuration, and a minimal application entry point.
+- [x] 1.2 Add initial dependencies for FastAPI, Pydantic, LangGraph/LangChain runtime, async server execution, and tests.
+- [x] 1.3 Add environment/config loading that reads secrets only from environment variables and never commits provider credentials.
+- [x] 1.4 Add a minimal health endpoint and smoke test proving the backend starts.
 
 ## 2. Research State
 
-- [ ] 2.1 Define typed models for research threads, research questions, scope, hypotheses, papers, evidence items, claims, open questions, decisions, critique notes, artifacts, and todos.
-- [ ] 2.2 Implement a repository interface for loading and saving research thread state.
-- [ ] 2.3 Provide an MVP repository implementation suitable for local development and tests.
-- [ ] 2.4 Validate state updates so durable claims require evidence, critique, or explicit user-assumption references.
-- [ ] 2.5 Add tests for state persistence, invalid update rejection, decision recording, and artifact-to-state linking.
+- [x] 2.1 Define typed models for research threads, research questions, scope, hypotheses, papers, evidence items, claims, open questions, decisions, critique notes, artifacts, and todos.
+- [x] 2.2 Implement a repository interface for loading and saving research thread state.
+- [x] 2.3 Provide an MVP repository implementation suitable for local development and tests.
+- [x] 2.4 Validate state updates so durable claims require evidence, critique, or explicit user-assumption references.
+- [x] 2.5 Add tests for state persistence, invalid update rejection, decision recording, and artifact-to-state linking.
 
 ## 3. Research Director And Subagents
 
-- [ ] 3.1 Implement the `make_research_director` LangGraph factory and register it in the backend graph configuration.
-- [ ] 3.2 Define the research director prompt and runtime behavior for clarification, planning, delegation, synthesis, critique, and next-step selection.
-- [ ] 3.3 Implement a registry-driven subagent configuration model with name, description, prompt, tool allowlist, model override, max turns, and timeout.
-- [ ] 3.4 Add built-in subagent configs for `literature-scout`, `paper-reader`, `methodologist`, `coding-researcher`, `evidence-curator`, `critic`, and `synthesizer`.
-- [ ] 3.5 Implement bounded subagent task dispatch with configurable concurrency and recursive subagent delegation disabled by design.
-- [ ] 3.6 Add tests for ambiguous-goal clarification, subagent selection, coding-researcher delegation, concurrency limiting, nested delegation prevention, and conflicting-result synthesis.
+- [x] 3.1 Implement the `make_research_director` LangGraph factory and register it in the backend graph configuration.
+- [x] 3.2 Define the research director prompt and runtime behavior for clarification, planning, delegation, synthesis, critique, and next-step selection.
+- [x] 3.3 Implement a registry-driven subagent configuration model with name, description, prompt, tool allowlist, model override, max turns, and timeout.
+- [x] 3.4 Add built-in subagent configs for `literature-scout`, `paper-reader`, `methodologist`, `coding-researcher`, `evidence-curator`, `critic`, and `synthesizer`.
+- [x] 3.5 Implement bounded subagent task dispatch with configurable concurrency and recursive subagent delegation disabled by design.
+- [x] 3.6 Add tests for ambiguous-goal clarification, subagent selection, coding-researcher delegation, concurrency limiting, nested delegation prevention, and conflicting-result synthesis.
 
 ## 4. Evidence And Artifacts
 
-- [ ] 4.1 Implement paper normalization for uploaded or retrieved sources with title, authors, source locator, year, and extraction status fields.
-- [ ] 4.2 Implement evidence item and claim creation helpers that preserve source links and quality signals.
-- [ ] 4.3 Implement critique notes that can challenge claims or evidence without deleting the original records.
-- [ ] 4.4 Implement MVP artifact generation for Markdown research briefs, reading notes, and evidence maps.
-- [ ] 4.5 Add tests that generated artifacts cite their source claims/evidence and label unsupported assumptions.
+- [x] 4.1 Implement paper normalization for uploaded or retrieved sources with title, authors, source locator, year, and extraction status fields.
+- [x] 4.2 Implement evidence item and claim creation helpers that preserve source links and quality signals.
+- [x] 4.3 Implement critique notes that can challenge claims or evidence without deleting the original records.
+- [x] 4.4 Implement MVP artifact generation for Markdown research briefs, reading notes, and evidence maps.
+- [x] 4.5 Add tests that generated artifacts cite their source claims/evidence and label unsupported assumptions.
 
 ## 5. Streaming API
 
-- [ ] 5.1 Implement APIs to create, retrieve, update, and list research threads and structured research state.
-- [ ] 5.2 Implement a research run endpoint that invokes the research director graph.
-- [ ] 5.3 Implement server-sent event streaming for run lifecycle, progress, subagent activity, research state updates, artifacts, final responses, and structured errors.
-- [ ] 5.4 Implement artifact retrieval endpoints scoped to research thread identifiers.
-- [ ] 5.5 Add API tests for thread creation, state retrieval, progress events, subagent completion events, artifact retrieval, and non-secret-bearing provider errors.
+- [x] 5.1 Implement APIs to create, retrieve, update, and list research threads and structured research state.
+- [x] 5.2 Implement a research run endpoint that invokes the research director graph.
+- [x] 5.3 Implement server-sent event streaming for run lifecycle, progress, subagent activity, research state updates, artifacts, final responses, and structured errors.
+- [x] 5.4 Implement artifact retrieval endpoints scoped to research thread identifiers.
+- [x] 5.5 Add API tests for thread creation, state retrieval, progress events, subagent completion events, artifact retrieval, and non-secret-bearing provider errors.
 
 ## 6. Integration And Verification
 
-- [ ] 6.1 Add fake model, fake search, and fake paper extraction fixtures for deterministic integration tests.
-- [ ] 6.2 Add an end-to-end test covering a broad research goal, clarification, parallel subagent execution, evidence persistence, critique, synthesis, and streaming output.
-- [ ] 6.3 Add documentation for local setup, environment variables, running tests, and the initial backend API surface.
-- [ ] 6.4 Run the fastest relevant checks and record the verification commands in the implementation summary.
+- [x] 6.1 Add fake model, fake search, and fake paper extraction fixtures for deterministic integration tests.
+- [x] 6.2 Add an end-to-end test covering a broad research goal, clarification, parallel subagent execution, evidence persistence, critique, synthesis, and streaming output.
+- [x] 6.3 Add documentation for local setup, environment variables, running tests, and the initial backend API surface.
+- [x] 6.4 Run the fastest relevant checks and record the verification commands in the implementation summary.
 
 ## 7. LLM Provider And Configuration
 
-- [ ] 7.1 Define typed model configuration for provider class, display metadata, streaming support, tool-calling support, vision support, long-context support, thinking/reasoning options, structured-output support, and default parameters.
-- [ ] 7.2 Implement a model factory that creates named LangChain-compatible chat models from configuration without hard-coding provider credentials.
-- [ ] 7.3 Add role-based model selection for the research director and each built-in subagent, including model inheritance and per-agent overrides.
-- [ ] 7.4 Add tests for missing model names, invalid provider classes, role-based model resolution, non-secret error reporting, and thinking/streaming option handling.
+- [x] 7.1 Define typed model configuration for provider class, display metadata, streaming support, tool-calling support, vision support, long-context support, thinking/reasoning options, structured-output support, and default parameters.
+- [x] 7.2 Implement a model factory that creates named LangChain-compatible chat models from configuration without hard-coding provider credentials.
+- [x] 7.3 Add role-based model selection for the research director and each built-in subagent, including model inheritance and per-agent overrides.
+- [x] 7.4 Add tests for missing model names, invalid provider classes, role-based model resolution, non-secret error reporting, and thinking/streaming option handling.
 
 ## 8. Tool Permissions And Skill Loading
 
-- [ ] 8.1 Define research tool groups for search, paper ingestion, evidence management, knowledge-base access, coding sandbox execution, artifact generation, and user clarification.
-- [ ] 8.2 Implement tool assembly from configured tools, built-in research tools, MCP tools, knowledge-base tools, coding sandbox tools, and director-only subagent task tools.
-- [ ] 8.3 Implement fail-closed tool filtering that combines global security policy, subagent allowlists, subagent denylists, skill-level tool restrictions, and runtime context.
-- [ ] 8.4 Ensure the subagent task tool is available only to the research director graph and never to subagent runtimes.
-- [ ] 8.5 Add tests for duplicate tool names, tool group filtering, MCP tool filtering, skill-restricted tools, and recursive subagent tool denial.
+- [x] 8.1 Define research tool groups for search, paper ingestion, evidence management, knowledge-base access, coding sandbox execution, artifact generation, and user clarification.
+- [x] 8.2 Implement tool assembly from configured tools, built-in research tools, MCP tools, knowledge-base tools, coding sandbox tools, and director-only subagent task tools.
+- [x] 8.3 Implement fail-closed tool filtering that combines global security policy, subagent allowlists, subagent denylists, skill-level tool restrictions, and runtime context.
+- [x] 8.4 Ensure the subagent task tool is available only to the research director graph and never to subagent runtimes.
+- [x] 8.5 Add tests for duplicate tool names, tool group filtering, MCP tool filtering, skill-restricted tools, and recursive subagent tool denial.
 
 ## 9. Knowledge Base Adapter
 
-- [ ] 9.1 Define a provider-neutral knowledge-base adapter interface for listing notes, reading notes, writing notes, querying entities, upserting entities, upserting relations, and linking notes to research state.
-- [ ] 9.2 Implement an MVP Obsidian-over-MCP adapter behind the generic knowledge-base interface.
-- [ ] 9.3 Add research state links from papers, claims, evidence items, decisions, and artifacts to knowledge-base note IDs or graph entity IDs.
-- [ ] 9.4 Add tests with a fake knowledge-base adapter for note reads/writes, graph upserts, source linking, adapter failures, and permission filtering.
+- [x] 9.1 Define a provider-neutral knowledge-base adapter interface for listing notes, reading notes, writing notes, querying entities, upserting entities, upserting relations, and linking notes to research state.
+- [x] 9.2 Implement an MVP Obsidian-over-MCP adapter behind the generic knowledge-base interface.
+- [x] 9.3 Add research state links from papers, claims, evidence items, decisions, and artifacts to knowledge-base note IDs or graph entity IDs.
+- [x] 9.4 Add tests with a fake knowledge-base adapter for note reads/writes, graph upserts, source linking, adapter failures, and permission filtering.
 
 ## 10. Safety Sandbox And Runtime Permissions
 
-- [ ] 10.1 Define a runtime security context carrying user ID, thread ID, run ID, role, allowed tools, allowed MCP servers, sandbox ID, and artifact root.
-- [ ] 10.2 Implement sandbox policy for `coding-researcher` with timeout, resource limits, network policy, file path boundaries, and artifact capture.
-- [ ] 10.3 Treat retrieved papers, web pages, PDFs, and knowledge-base notes as untrusted source text that cannot override system or developer instructions.
-- [ ] 10.4 Add audit records for tool calls, sandbox executions, MCP calls, rejected permissions, subagent starts, subagent completions, and subagent failures.
-- [ ] 10.5 Add tests for path isolation, timeout handling, denied network access, denied host filesystem access, prompt-injection text handling, and audit logging.
+- [x] 10.1 Define a runtime security context carrying user ID, thread ID, run ID, role, allowed tools, allowed MCP servers, sandbox ID, and artifact root.
+- [x] 10.2 Implement sandbox policy for `coding-researcher` with timeout, resource limits, network policy, file path boundaries, and artifact capture.
+- [x] 10.3 Treat retrieved papers, web pages, PDFs, and knowledge-base notes as untrusted source text that cannot override system or developer instructions.
+- [x] 10.4 Add audit records for tool calls, sandbox executions, MCP calls, rejected permissions, subagent starts, subagent completions, and subagent failures.
+- [x] 10.5 Add tests for path isolation, timeout handling, denied network access, denied host filesystem access, prompt-injection text handling, and audit logging.
 
 ## 11. LangGraph Node Design
 
-- [ ] 11.1 Define explicit graph nodes for context loading, director reasoning, clarification, delegation planning, subagent execution, result merging, research state update, critique, synthesis, and event emission.
-- [ ] 11.2 Implement graph edges that allow only the director node to enter subagent execution and prevent subagent graphs from reaching delegation tools.
-- [ ] 11.3 Define node-level event emission for run lifecycle, director progress, subagent progress, state updates, evidence creation, artifact creation, final responses, and structured errors.
-- [ ] 11.4 Add tests for graph routing, clarification path, direct-answer path, delegation path, state-update path, recursive delegation prevention, and event ordering.
+- [x] 11.1 Define explicit graph nodes for context loading, director reasoning, clarification, delegation planning, subagent execution, result merging, research state update, critique, synthesis, and event emission.
+- [x] 11.2 Implement graph edges that allow only the director node to enter subagent execution and prevent subagent graphs from reaching delegation tools.
+- [x] 11.3 Define node-level event emission for run lifecycle, director progress, subagent progress, state updates, evidence creation, artifact creation, final responses, and structured errors.
+- [x] 11.4 Add tests for graph routing, clarification path, direct-answer path, delegation path, state-update path, recursive delegation prevention, and event ordering.
 
 ## 12. Gateway And API Boundaries
 
-- [ ] 12.1 Define FastAPI routers for health, models, tools, research threads, structured research state, messages, research runs, SSE run events, artifacts, evidence, and knowledge-base access.
-- [ ] 12.2 Keep the gateway thin by moving orchestration, persistence, evidence handling, and knowledge-base behavior into application services.
-- [ ] 12.3 Add request/response schemas for run creation, event streaming, artifact retrieval, evidence retrieval, knowledge-base linking, and structured errors.
-- [ ] 12.4 Add API tests for route validation, user/thread scoping, SSE event serialization, structured error mapping, and gateway behavior without leaking secrets.
+- [x] 12.1 Define FastAPI routers for health, models, tools, research threads, structured research state, messages, research runs, SSE run events, artifacts, evidence, and knowledge-base access.
+- [x] 12.2 Keep the gateway thin by moving orchestration, persistence, evidence handling, and knowledge-base behavior into application services.
+- [x] 12.3 Add request/response schemas for run creation, event streaming, artifact retrieval, evidence retrieval, knowledge-base linking, and structured errors.
+- [x] 12.4 Add API tests for route validation, user/thread scoping, SSE event serialization, structured error mapping, and gateway behavior without leaking secrets.
 
 ## Chinese Supplement: Coding Subagent Tasks
 
