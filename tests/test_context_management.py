@@ -170,12 +170,77 @@ def test_subagent_context_slice_excludes_unrelated_main_thread_history():
 def test_compression_level_selection_across_pressure_cases():
     budgeter = ContextBudgeter(prompt_budget=1000, completion_reserve=200)
 
-    assert budgeter.select_level(estimated_prompt_tokens=600) == CompressionLevel.LEVEL_0
-    assert budgeter.select_level(estimated_prompt_tokens=850) == CompressionLevel.LEVEL_1
-    assert budgeter.select_level(estimated_prompt_tokens=1200) == CompressionLevel.LEVEL_2
-    assert budgeter.select_level(estimated_prompt_tokens=1700) == CompressionLevel.LEVEL_3
-    assert budgeter.select_level(estimated_prompt_tokens=2300) == CompressionLevel.LEVEL_4
-    assert budgeter.select_level(estimated_prompt_tokens=4000) == CompressionLevel.LEVEL_5
+    assert budgeter.occupancy(estimated_prompt_tokens=500) == 0.5
+    assert budgeter.select_level(estimated_prompt_tokens=500) == CompressionLevel.LEVEL_0
+    assert budgeter.select_level(estimated_prompt_tokens=501) == CompressionLevel.LEVEL_1
+    assert budgeter.select_level(estimated_prompt_tokens=700) == CompressionLevel.LEVEL_1
+    assert budgeter.select_level(estimated_prompt_tokens=701) == CompressionLevel.LEVEL_2
+    assert budgeter.select_level(estimated_prompt_tokens=899) == CompressionLevel.LEVEL_2
+    assert budgeter.select_level(estimated_prompt_tokens=900) == CompressionLevel.LEVEL_5
+    assert budgeter.select_level(estimated_prompt_tokens=1200) == CompressionLevel.LEVEL_5
+
+
+def test_occupancy_uses_configured_window_not_completion_reserve():
+    budgeter = ContextBudgeter(prompt_budget=1000, completion_reserve=900)
+
+    assert budgeter.occupancy(estimated_prompt_tokens=500) == 0.5
+    assert budgeter.select_level(estimated_prompt_tokens=500) == CompressionLevel.LEVEL_0
+
+
+def test_context_metadata_reports_occupancy_and_over_window_state():
+    pack = ContextBuilder(prompt_budget=50, completion_reserve=0).build_director_pack(
+        latest_user_message="L" * 1000,
+    )
+
+    assert pack.metadata.compression_level == CompressionLevel.LEVEL_5
+    assert pack.metadata.context_window_occupancy > 1.0
+    assert pack.metadata.over_context_window is True
+    assert pack.render_messages()[-1]["content"] == "L" * 1000
+
+
+def test_maximum_compression_uses_locator_first_for_recoverable_context():
+    builder = ContextBuilder(
+        prompt_budget=220,
+        completion_reserve=0,
+        per_section_limits={
+            ContextSectionType.EVIDENCE: 400,
+            ContextSectionType.TOOL_OUTPUT: 400,
+        },
+    )
+    long_doc = LongDocument(
+        title="Large Paper",
+        content="full paper text " * 200,
+        locator=ContextSourceLocator(
+            type="paper",
+            id="paper-large",
+            path_or_url="https://example.test/large-paper",
+            title="Large Paper",
+        ),
+    )
+    tool_output = ToolOutputRecord(
+        id="tool-large",
+        content="tool output " * 200,
+        locator=ContextSourceLocator(
+            type="tool_call",
+            id="tool-large",
+            path_or_url="logs/tool-large.txt",
+        ),
+    )
+
+    pack = builder.build_director_pack(
+        latest_user_message="Summarize only what is recoverable.",
+        documents=[long_doc],
+        tool_outputs=[tool_output],
+    )
+
+    rendered = "\n".join(message["content"] for message in pack.render_messages())
+    assert pack.metadata.compression_level == CompressionLevel.LEVEL_5
+    assert "https://example.test/large-paper" in rendered
+    assert "logs/tool-large.txt" in rendered
+    assert "full paper text full paper text" not in rendered
+    assert "tool output tool output" not in rendered
+    omitted_ids = {record.source_locator.id for record in pack.metadata.omitted_context}
+    assert {"paper-large", "tool-large"} <= omitted_ids
 
 
 async def test_context_config_defaults_and_director_subagent_integration():

@@ -6,14 +6,7 @@ from langgraph.graph import END, START, StateGraph
 
 from coresearcher.context import ContextBuilder, ContextPack
 from coresearcher.domain.events import ResearchEvent, ResearchEventType
-from coresearcher.domain.state import (
-    Claim,
-    OpenQuestion,
-    ResearchState,
-    SourceLocator,
-    SourceType,
-    new_id,
-)
+from coresearcher.domain.state import OpenQuestion, ResearchState
 from coresearcher.subagents.dispatcher import SubagentDispatcher, SubagentTask
 
 
@@ -34,8 +27,41 @@ class DirectorGraphState(TypedDict, total=False):
 def _needs_clarification(message: str) -> bool:
     lowered = message.lower()
     too_short = len(message.strip()) < 16
-    vague = any(phrase in lowered for phrase in ["good research direction", "好的研究方向"])
+    vague = "good research direction" in lowered
     return too_short or vague
+
+
+def _requests_execution_based_validation(message: str) -> bool:
+    lowered = message.lower()
+    phrases = [
+        "coding subagent",
+        "code execution",
+        "run code",
+        "run the code",
+        "execute code",
+        "reproduce",
+        "reproduction",
+        "replicate",
+        "benchmark",
+        "baseline with code",
+        "implement and test",
+        "inspect the implementation",
+    ]
+    return any(phrase in lowered for phrase in phrases)
+
+
+def _requests_literature_work(message: str) -> bool:
+    lowered = message.lower()
+    words = [
+        "paper",
+        "literature",
+        "source",
+        "citation",
+        "critique",
+        "limitation",
+        "data availability",
+    ]
+    return any(word in lowered for word in words)
 
 
 def _node_event(state: DirectorGraphState, message: str) -> ResearchEvent:
@@ -69,13 +95,13 @@ def _director_reasoning(state: DirectorGraphState) -> DirectorGraphState:
     if _needs_clarification(message):
         route: Literal["clarify", "delegate", "answer"] = "clarify"
         plan: list[str] = ["Ask for missing research domain, target question, or constraints."]
-    elif any(word in message.lower() for word in ["code", "reproduce", "baseline", "data", "代码"]):
+    elif _requests_execution_based_validation(message):
         route = "delegate"
         plan = [
             "Ask coding-researcher to perform bounded code-based validation.",
             "Ask critic to identify assumptions and limitations.",
         ]
-    elif any(word in message.lower() for word in ["paper", "literature", "文献", "论文"]):
+    elif _requests_literature_work(message):
         route = "delegate"
         plan = [
             "Ask literature-scout to identify candidate sources.",
@@ -184,11 +210,18 @@ def _synthesis(state: DirectorGraphState) -> DirectorGraphState:
         result_lines = "\n".join(
             f"- {item['subagent_name']}: {item['summary']}" for item in subagent_results
         )
+        coding_note = ""
+        if any(item["subagent_name"] == "coding-researcher" for item in subagent_results):
+            coding_note = (
+                "\n\nCoding observations are execution evidence with scope limits; they are "
+                "not standalone authoritative conclusions without corroborating evidence."
+            )
         response = (
             "Here is the current research loop result:\n\n"
             f"Plan:\n{chr(10).join(f'- {item}' for item in plan)}\n\n"
             f"Subagent findings:\n{result_lines}\n\n"
             "These findings should be treated as provisional until linked to stronger evidence."
+            f"{coding_note}"
         )
     else:
         response = (

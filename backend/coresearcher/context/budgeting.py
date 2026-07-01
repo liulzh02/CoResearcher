@@ -26,16 +26,15 @@ class ContextBudgeter:
     def estimate_sections(self, sections: list[ContextSection]) -> dict[str, int]:
         return {section.type.value: estimate_tokens(section.content) for section in sections}
 
+    def occupancy(self, *, estimated_prompt_tokens: int) -> float:
+        return estimated_prompt_tokens / max(1, self.prompt_budget)
+
     def select_level(self, *, estimated_prompt_tokens: int) -> CompressionLevel:
-        ratio = estimated_prompt_tokens / max(1, self.available_prompt_budget)
-        if ratio <= 0.75:
+        ratio = self.occupancy(estimated_prompt_tokens=estimated_prompt_tokens)
+        if ratio <= 0.50:
             return CompressionLevel.LEVEL_0
-        if ratio <= 1.10:
+        if ratio <= 0.70:
             return CompressionLevel.LEVEL_1
-        if ratio <= 1.55:
+        if ratio < 0.90:
             return CompressionLevel.LEVEL_2
-        if ratio <= 2.25:
-            return CompressionLevel.LEVEL_3
-        if ratio <= 3.20:
-            return CompressionLevel.LEVEL_4
         return CompressionLevel.LEVEL_5

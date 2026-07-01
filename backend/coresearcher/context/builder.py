@@ -21,6 +21,9 @@ from coresearcher.domain.state import EvidenceItem, ResearchState
 from coresearcher.skills import SkillMetadata
 
 
+_MAXIMUM_COMPRESSION_LEVEL = CompressionLevel.LEVEL_5
+
+
 class ContextBuilder:
     def __init__(
         self,
@@ -108,6 +111,71 @@ class ContextBuilder:
         subagent_task: str | None,
         isolate_to_task: bool,
     ) -> ContextPack:
+        sections, omitted = self._render_sections(
+            latest_user_message=latest_user_message,
+            conversation=conversation,
+            research_state=research_state,
+            memory=memory,
+            evidence=evidence,
+            documents=documents,
+            tool_outputs=tool_outputs,
+            skills=skills,
+            subagent_task=subagent_task,
+            compact_recoverable=False,
+        )
+        estimates = self.budgeter.estimate_sections(sections)
+        total = sum(estimates.values())
+        compression_level = self.budgeter.select_level(estimated_prompt_tokens=total)
+
+        if compression_level == _MAXIMUM_COMPRESSION_LEVEL:
+            sections, omitted = self._render_sections(
+                latest_user_message=latest_user_message,
+                conversation=conversation,
+                research_state=research_state,
+                memory=memory,
+                evidence=evidence,
+                documents=documents,
+                tool_outputs=tool_outputs,
+                skills=skills,
+                subagent_task=subagent_task,
+                compact_recoverable=True,
+            )
+            estimates = self.budgeter.estimate_sections(sections)
+            total = sum(estimates.values())
+            compression_level = self.budgeter.select_level(estimated_prompt_tokens=total)
+
+        occupancy = self.budgeter.occupancy(estimated_prompt_tokens=total)
+        metadata = ContextBuildMetadata(
+            compression_level=compression_level,
+            prompt_budget=self.budgeter.prompt_budget,
+            completion_reserve=self.budgeter.completion_reserve,
+            context_window_occupancy=occupancy,
+            over_context_window=occupancy > 1.0,
+            section_token_estimates=estimates,
+            source_locator_count=sum(len(section.source_locators) for section in sections),
+            omitted_context=omitted,
+            retrieval_query=latest_user_message,
+        )
+        return ContextPack(
+            sections=sections,
+            latest_user_message=LatestUserMessage(content=latest_user_message),
+            metadata=metadata,
+        )
+
+    def _render_sections(
+        self,
+        *,
+        latest_user_message: str,
+        conversation: list[MessageRecord],
+        research_state: ResearchState | None,
+        memory: list[str],
+        evidence: list[EvidenceItem],
+        documents: list[LongDocument],
+        tool_outputs: list[ToolOutputRecord],
+        skills: list[SkillMetadata],
+        subagent_task: str | None,
+        compact_recoverable: bool,
+    ) -> tuple[list[ContextSection], list[OmittedContextRecord]]:
         omitted: list[OmittedContextRecord] = []
         sections: list[ContextSection] = [
             self._section(
@@ -152,7 +220,7 @@ class ContextBuilder:
                 )
             )
 
-        evidence_text = self._render_evidence(evidence, documents)
+        evidence_text = self._render_evidence(evidence, documents, omitted, compact_recoverable)
         evidence_locators = [*self._evidence_locators(evidence), *(doc.locator for doc in documents)]
         if evidence_text:
             sections.append(
@@ -163,7 +231,7 @@ class ContextBuilder:
                 )
             )
 
-        tool_text = self._render_tool_outputs(tool_outputs, omitted)
+        tool_text = self._render_tool_outputs(tool_outputs, omitted, compact_recoverable)
         if tool_text:
             sections.append(
                 self._section(
@@ -192,22 +260,7 @@ class ContextBuilder:
 
         sections.append(self._section(ContextSectionType.LATEST_USER_MESSAGE, latest_user_message))
 
-        estimates = self.budgeter.estimate_sections(sections)
-        total = sum(estimates.values())
-        metadata = ContextBuildMetadata(
-            compression_level=self.budgeter.select_level(estimated_prompt_tokens=total),
-            prompt_budget=self.budgeter.prompt_budget,
-            completion_reserve=self.budgeter.completion_reserve,
-            section_token_estimates=estimates,
-            source_locator_count=sum(len(section.source_locators) for section in sections),
-            omitted_context=omitted,
-            retrieval_query=latest_user_message,
-        )
-        return ContextPack(
-            sections=sections,
-            latest_user_message=LatestUserMessage(content=latest_user_message),
-            metadata=metadata,
-        )
+        return sections, omitted
 
     def _section(
         self,
@@ -254,7 +307,13 @@ class ContextBuilder:
             parts.append("active_plan: " + "; ".join(item.text for item in state.todos[:5]))
         return "\n".join(parts) or "No selected research state."
 
-    def _render_evidence(self, evidence: list[EvidenceItem], documents: list[LongDocument]) -> str:
+    def _render_evidence(
+        self,
+        evidence: list[EvidenceItem],
+        documents: list[LongDocument],
+        omitted: list[OmittedContextRecord],
+        compact_recoverable: bool,
+    ) -> str:
         lines: list[str] = []
         for item in evidence:
             locator = (
@@ -264,6 +323,20 @@ class ContextBuilder:
             )
             lines.append(f"evidence_id={item.id}: {item.summary}\nsource={render_locator(locator)}")
         for doc in documents:
+            if compact_recoverable:
+                omitted.append(
+                    OmittedContextRecord(
+                        reason="document locator-only maximum compression",
+                        source_locator=doc.locator,
+                        estimated_tokens=estimate_tokens(doc.content),
+                        recovery_metadata={"title": doc.title},
+                    )
+                )
+                summary = doc.snippet or "Full document omitted under maximum compression."
+                lines.append(
+                    f"document: {doc.title}\nsource={render_locator(doc.locator)}\nsummary={summary[:160]}"
+                )
+                continue
             snippet = doc.snippet or doc.content[: self.budgeter.section_limit(ContextSectionType.EVIDENCE, 500) // 2]
             lines.append(
                 f"document: {doc.title}\nsource={render_locator(doc.locator)}\nsnippet={snippet[:300]}"
@@ -278,11 +351,28 @@ class ContextBuilder:
         return locators
 
     def _render_tool_outputs(
-        self, records: list[ToolOutputRecord], omitted: list[OmittedContextRecord]
+        self,
+        records: list[ToolOutputRecord],
+        omitted: list[OmittedContextRecord],
+        compact_recoverable: bool,
     ) -> str:
         limit = self.budgeter.section_limit(ContextSectionType.TOOL_OUTPUT, 1_000)
         lines: list[str] = []
         for record in records:
+            if compact_recoverable:
+                omitted.append(
+                    OmittedContextRecord(
+                        reason="tool output locator-only maximum compression",
+                        source_locator=record.locator,
+                        estimated_tokens=estimate_tokens(record.content),
+                        recovery_metadata={"tool_call_id": record.id},
+                    )
+                )
+                lines.append(
+                    f"tool_call_id={record.id}\nfull_output={render_locator(record.locator)}\n"
+                    "excerpt=omitted under maximum compression"
+                )
+                continue
             truncated = len(record.content) > limit
             excerpt = record.content[:limit]
             if truncated:

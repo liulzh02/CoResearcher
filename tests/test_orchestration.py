@@ -51,4 +51,40 @@ async def test_director_delegates_code_tasks():
     names = {item["subagent_name"] for item in result["subagent_results"]}
     assert "coding-researcher" in names
     assert "critic" in names
+    coding = next(item for item in result["subagent_results"] if item["subagent_name"] == "coding-researcher")
+    assert coding["execution_observation"]["environment"]
+    assert "not standalone" in result["final_response"].lower()
 
+
+async def test_director_does_not_auto_launch_coding_for_data_or_literature_work():
+    graph = make_research_director()
+    result = await graph.ainvoke(
+        {
+            "thread_id": "thread_1",
+            "run_id": "run_1",
+            "user_message": "Please analyze data availability in the literature and critique limitations.",
+            "events": [],
+        }
+    )
+
+    names = {item["subagent_name"] for item in result["subagent_results"]}
+    assert "literature-scout" in names
+    assert "critic" in names
+    assert "coding-researcher" not in names
+
+
+async def test_coding_subagent_result_is_bounded_execution_observation():
+    dispatcher = SubagentDispatcher(max_concurrency=1)
+    result, _ = await dispatcher.dispatch(
+        SubagentTask(
+            subagent_name="coding-researcher",
+            description="Reproduce the baseline with code.",
+        ),
+        thread_id="thread_1",
+        run_id="run_1",
+    )
+
+    assert result.execution_observation["environment"]
+    assert result.execution_observation["observed_output"]
+    assert result.execution_observation["limitations"]
+    assert "not authoritative" in " ".join(result.limitations).lower()

@@ -22,6 +22,7 @@ class SubagentTaskResult(BaseModel):
     task_id: str
     subagent_name: str
     summary: str
+    execution_observation: dict[str, Any] = Field(default_factory=dict)
     source_locators: list[SourceLocator] = Field(default_factory=list)
     artifact_ids: list[str] = Field(default_factory=list)
     evidence_ids: list[str] = Field(default_factory=list)
@@ -69,10 +70,29 @@ class SubagentDispatcher:
             )
         ]
         async with self._semaphore:
+            execution_observation: dict[str, Any] = {}
+            limitations = ["MVP fake subagent runtime; no live provider or external tools used."]
+            if config.name == "coding-researcher":
+                execution_observation = {
+                    "commands_run": [],
+                    "environment": "MVP simulated coding runtime; no isolated execution provider used.",
+                    "inputs": task.payload.get("inputs", "not provided"),
+                    "observed_output": f"No code was executed for task: {task.description}",
+                    "failure_logs": [],
+                    "limitations": [
+                        "This is a bounded execution observation stub.",
+                        "It is not authoritative research evidence by itself.",
+                    ],
+                    "confidence": "low",
+                }
+                limitations.append(
+                    "Coding observation is not authoritative and not standalone proof of a research claim."
+                )
             result = SubagentTaskResult(
                 task_id=task.id,
                 subagent_name=config.name,
                 summary=f"{config.name} completed task: {task.description}",
+                execution_observation=execution_observation,
                 source_locators=[
                     SourceLocator(
                         type=SourceType.TOOL_CALL,
@@ -81,7 +101,7 @@ class SubagentDispatcher:
                         metadata={"subagent": config.name},
                     )
                 ],
-                limitations=["MVP fake subagent runtime; no live provider or external tools used."],
+                limitations=limitations,
                 context_pack=context_pack,
             )
         events.append(

@@ -64,6 +64,8 @@ class ContextBuildMetadata(BaseModel):
     compression_level: CompressionLevel = CompressionLevel.LEVEL_0
     prompt_budget: int = 0
     completion_reserve: int = 0
+    context_window_occupancy: float = 0.0
+    over_context_window: bool = False
     section_token_estimates: dict[str, int] = Field(default_factory=dict)
     source_locator_count: int = 0
     omitted_context: list[OmittedContextRecord] = Field(default_factory=list)
