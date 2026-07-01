@@ -1,0 +1,11 @@
+name: evidence-curation
+description: Curate evidence and claims without direct mutation tools.
+allowed_tool_groups:
+  - knowledge_base
+  - artifact
+allowed_tools:
+  - kb_read_note
+  - write_artifact
+output_schema: evidence_curation_result
+can_write_state: false
+can_write_memory: false

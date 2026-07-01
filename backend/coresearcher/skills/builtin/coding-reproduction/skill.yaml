@@ -1,0 +1,15 @@
+name: coding-reproduction
+description: Execute bounded code reproduction tasks.
+allowed_tool_groups:
+  - file
+  - coding_sandbox
+  - artifact
+allowed_tools:
+  - read_file
+  - write_file
+  - str_replace
+  - bash
+  - write_artifact
+output_schema: coding_reproduction_result
+can_write_state: false
+can_write_memory: false

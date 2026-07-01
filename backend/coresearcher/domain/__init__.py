@@ -1,4 +1,5 @@
 from coresearcher.domain.events import ResearchEvent, ResearchEventType
+from coresearcher.domain.commands import DomainCommandService
 from coresearcher.domain.state import (
     ArtifactRecord,
     Claim,
@@ -19,6 +20,7 @@ __all__ = [
     "Claim",
     "CritiqueNote",
     "Decision",
+    "DomainCommandService",
     "EvidenceItem",
     "Hypothesis",
     "OpenQuestion",
@@ -30,4 +32,3 @@ __all__ = [
     "SourceLocator",
     "TodoItem",
 ]
-

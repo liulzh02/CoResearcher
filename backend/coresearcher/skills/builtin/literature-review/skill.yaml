@@ -1,0 +1,13 @@
+name: literature-review
+description: Search and scope related work.
+allowed_tool_groups:
+  - search
+  - paper_ingestion
+  - artifact
+allowed_tools:
+  - fake_search
+  - read_file
+  - write_artifact
+output_schema: literature_review_result
+can_write_state: false
+can_write_memory: false

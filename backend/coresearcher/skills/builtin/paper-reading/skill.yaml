@@ -1,0 +1,13 @@
+name: paper-reading
+description: Read papers and extract evidence-linked notes.
+allowed_tool_groups:
+  - file
+  - pdf
+  - artifact
+allowed_tools:
+  - read_file
+  - read_pdf_text
+  - write_artifact
+output_schema: paper_reading_result
+can_write_state: false
+can_write_memory: false

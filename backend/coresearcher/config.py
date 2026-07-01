@@ -5,7 +5,9 @@ from pathlib import Path
 from typing import Any
 
 import yaml
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator
+
+from coresearcher.tools.registry import ToolGroup
 
 
 class PersistenceSettings(BaseModel):
@@ -26,9 +28,105 @@ class SecuritySettings(BaseModel):
 
 class SandboxSettings(BaseModel):
     timeout_seconds: float = 30.0
+    max_output_chars: int = 20_000
+    max_write_chars: int = 200_000
     network_enabled: bool = False
+    allow_bash: bool = False
     artifact_root: Path = Path(".coresearcher/artifacts")
     allowed_roots: list[Path] = Field(default_factory=lambda: [Path(".coresearcher/workspaces")])
+
+
+class ToolSwitchSettings(BaseModel):
+    enabled: bool = True
+
+
+class SubagentDelegationToolSettings(BaseModel):
+    enabled: bool = True
+    director_only: bool = True
+
+
+class ExternalProviderSettings(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    enabled: bool = False
+    secret_env: str | None = None
+    base_url: str | None = None
+
+    def resolve_secret(self) -> str | None:
+        if not self.secret_env:
+            return None
+        value = os.getenv(self.secret_env)
+        if not value:
+            raise RuntimeError(f"Required secret environment variable is missing: {self.secret_env}")
+        return value
+
+
+class McpServerSettings(BaseModel):
+    name: str
+    enabled: bool = False
+    allowed_tools: list[str] = Field(default_factory=list)
+
+
+class ConfiguredToolSettings(BaseModel):
+    name: str
+    group: ToolGroup
+    enabled: bool = True
+
+
+class ToolPolicySettings(BaseModel):
+    default_allowed_groups: list[ToolGroup] = Field(default_factory=list)
+    denied_tools: list[str] = Field(default_factory=list)
+    allowed_mcp_servers: list[str] = Field(default_factory=list)
+
+
+class SkillStorageSettings(BaseModel):
+    builtin_root: Path = Path("backend/coresearcher/skills/builtin")
+    storage_root: Path = Path("storage/skills")
+
+
+def _default_search_providers() -> dict[str, ExternalProviderSettings]:
+    return {
+        "fake": ExternalProviderSettings(enabled=False),
+        "ddg": ExternalProviderSettings(enabled=False),
+        "jina_ai": ExternalProviderSettings(enabled=False, secret_env="JINA_API_KEY"),
+        "serper": ExternalProviderSettings(enabled=False, secret_env="SERPER_API_KEY"),
+        "brave": ExternalProviderSettings(enabled=False, secret_env="BRAVE_SEARCH_API_KEY"),
+        "tavily": ExternalProviderSettings(enabled=False, secret_env="TAVILY_API_KEY"),
+        "firecrawl": ExternalProviderSettings(enabled=False, secret_env="FIRECRAWL_API_KEY"),
+        "browserless": ExternalProviderSettings(enabled=False, secret_env="BROWSERLESS_API_KEY"),
+        "exa": ExternalProviderSettings(enabled=False, secret_env="EXA_API_KEY"),
+        "arxiv": ExternalProviderSettings(enabled=False),
+        "semantic_scholar": ExternalProviderSettings(
+            enabled=False, secret_env="SEMANTIC_SCHOLAR_API_KEY"
+        ),
+        "crossref": ExternalProviderSettings(enabled=False),
+    }
+
+
+class ToolRuntimeSettings(BaseModel):
+    builtins: ToolSwitchSettings = Field(default_factory=ToolSwitchSettings)
+    sandbox: ToolSwitchSettings = Field(default_factory=ToolSwitchSettings)
+    subagent_delegation: SubagentDelegationToolSettings = Field(
+        default_factory=SubagentDelegationToolSettings
+    )
+    configured_tools: list[ConfiguredToolSettings] = Field(default_factory=list)
+    search_providers: dict[str, ExternalProviderSettings] = Field(
+        default_factory=_default_search_providers
+    )
+    mcp_servers: list[McpServerSettings] = Field(default_factory=list)
+    external_agents: dict[str, ExternalProviderSettings] = Field(default_factory=dict)
+    policy: ToolPolicySettings = Field(default_factory=ToolPolicySettings)
+    skills: SkillStorageSettings = Field(default_factory=SkillStorageSettings)
+
+    @field_validator("search_providers")
+    @classmethod
+    def normalize_provider_names(
+        cls, value: dict[str, ExternalProviderSettings]
+    ) -> dict[str, ExternalProviderSettings]:
+        normalized: dict[str, ExternalProviderSettings] = {}
+        for name, settings in value.items():
+            normalized[name.replace("-", "_")] = settings
+        return normalized
 
 
 class AppSettings(BaseModel):
@@ -37,6 +135,7 @@ class AppSettings(BaseModel):
     gateway: GatewaySettings = Field(default_factory=GatewaySettings)
     security: SecuritySettings = Field(default_factory=SecuritySettings)
     sandbox: SandboxSettings = Field(default_factory=SandboxSettings)
+    tools: ToolRuntimeSettings = Field(default_factory=ToolRuntimeSettings)
 
 
 def _deep_merge(base: dict[str, Any], override: dict[str, Any]) -> dict[str, Any]:
@@ -77,4 +176,3 @@ def require_env_secret(name: str) -> str:
     if not value:
         raise RuntimeError(f"Required secret environment variable is missing: {name}")
     return value
-

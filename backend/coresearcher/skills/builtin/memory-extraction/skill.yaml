@@ -1,0 +1,10 @@
+name: memory-extraction
+description: Propose memory candidates for validation.
+allowed_tool_groups:
+  - artifact
+allowed_tools:
+  - read_artifact
+  - write_artifact
+output_schema: memory_extraction_result
+can_write_state: false
+can_write_memory: true

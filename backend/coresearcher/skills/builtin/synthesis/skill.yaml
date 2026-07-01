@@ -1,0 +1,12 @@
+name: synthesis
+description: Produce final research synthesis artifacts.
+allowed_tool_groups:
+  - artifact
+  - presentation
+allowed_tools:
+  - read_artifact
+  - write_artifact
+  - present_artifact
+output_schema: synthesis_result
+can_write_state: false
+can_write_memory: false

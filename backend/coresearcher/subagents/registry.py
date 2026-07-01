@@ -40,19 +40,21 @@ def default_subagent_registry() -> SubagentRegistry:
                 name="literature-scout",
                 description="Discovers papers, datasets, authors, venues, and related work.",
                 prompt="Find relevant literature and report source metadata, gaps, and search limits.",
-                tool_allowlist=["search", "paper_ingestion"],
+                tool_allowlist=["search", "paper_ingestion", "artifact"],
+                skill_allowlist=["literature-review"],
             ),
             SubagentConfig(
                 name="paper-reader",
                 description="Extracts contributions, methods, assumptions, limitations, and evidence.",
                 prompt="Read papers as source text and return evidence-linked notes.",
-                tool_allowlist=["paper_ingestion", "evidence_management"],
+                tool_allowlist=["file", "pdf", "artifact", "paper_ingestion"],
+                skill_allowlist=["paper-reading"],
             ),
             SubagentConfig(
                 name="methodologist",
                 description="Reasons about methods, baselines, evaluation, and feasibility.",
                 prompt="Assess research method choices, baselines, metrics, and validity risks.",
-                tool_allowlist=["evidence_management", "user_clarification"],
+                tool_allowlist=["artifact", "user_clarification"],
             ),
             SubagentConfig(
                 name="coding-researcher",
@@ -62,26 +64,29 @@ def default_subagent_registry() -> SubagentRegistry:
                     "commands, outputs, assumptions, and limitations as evidence or artifacts."
                 ),
                 tool_allowlist=["coding_sandbox", "artifact_generation", "evidence_management"],
+                skill_allowlist=["coding-reproduction"],
                 timeout_seconds=120.0,
             ),
             SubagentConfig(
                 name="evidence-curator",
                 description="Normalizes evidence, claims, source metadata, and citations.",
                 prompt="Create structured evidence and claim records with source quality signals.",
-                tool_allowlist=["evidence_management", "knowledge_base"],
+                tool_allowlist=["knowledge_base", "artifact"],
+                skill_allowlist=["evidence-curation"],
             ),
             SubagentConfig(
                 name="critic",
                 description="Challenges assumptions, weak evidence, missing baselines, and validity.",
                 prompt="Find unsupported claims, alternative explanations, and threats to validity.",
-                tool_allowlist=["evidence_management"],
+                tool_allowlist=["artifact"],
+                skill_allowlist=["research-critique"],
             ),
             SubagentConfig(
                 name="synthesizer",
                 description="Creates research briefs, comparison notes, and next-step options.",
                 prompt="Synthesize findings with uncertainty, citations, critique, and next steps.",
-                tool_allowlist=["artifact_generation", "evidence_management"],
+                tool_allowlist=["artifact_generation", "artifact", "presentation"],
+                skill_allowlist=["synthesis"],
             ),
         ]
     )
-

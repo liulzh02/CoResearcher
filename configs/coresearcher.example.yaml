@@ -15,8 +15,61 @@ security:
 
 sandbox:
   timeout_seconds: 30
+  max_output_chars: 20000
+  max_write_chars: 200000
   network_enabled: false
+  allow_bash: false
   artifact_root: .coresearcher/artifacts
   allowed_roots:
     - .coresearcher/workspaces
 
+tools:
+  builtins:
+    enabled: true
+  sandbox:
+    enabled: true
+  subagent_delegation:
+    enabled: true
+    director_only: true
+  policy:
+    default_allowed_groups: []
+    denied_tools: []
+    allowed_mcp_servers: []
+  search_providers:
+    fake:
+      enabled: false
+    ddg:
+      enabled: false
+    jina_ai:
+      enabled: false
+      secret_env: JINA_API_KEY
+    serper:
+      enabled: false
+      secret_env: SERPER_API_KEY
+    brave:
+      enabled: false
+      secret_env: BRAVE_SEARCH_API_KEY
+    tavily:
+      enabled: false
+      secret_env: TAVILY_API_KEY
+    firecrawl:
+      enabled: false
+      secret_env: FIRECRAWL_API_KEY
+    browserless:
+      enabled: false
+      secret_env: BROWSERLESS_API_KEY
+    exa:
+      enabled: false
+      secret_env: EXA_API_KEY
+    arxiv:
+      enabled: false
+    semantic_scholar:
+      enabled: false
+      secret_env: SEMANTIC_SCHOLAR_API_KEY
+    crossref:
+      enabled: false
+  mcp_servers: []
+  external_agents: {}
+  skills:
+    builtin_root: backend/coresearcher/skills/builtin
+    storage_root: storage/skills

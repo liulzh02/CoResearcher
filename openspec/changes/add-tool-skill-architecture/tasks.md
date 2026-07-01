@@ -1,77 +1,77 @@
 ## 1. Tool And Skill Configuration
 
-- [ ] 1.1 Define typed configuration models for tools, tool groups, MCP servers, external providers, Skill storage, Skill metadata, and tool policy defaults.
-- [ ] 1.2 Add config fields for enabling built-in tools, sandbox tools, search providers, MCP tools, external-agent tools, and director-only subagent delegation.
-- [ ] 1.3 Add validation that secrets are read from environment variables and never embedded in provider config.
-- [ ] 1.4 Add tests for config defaults, invalid tool references, disabled providers, missing secrets, and unknown tool groups.
+- [x] 1.1 Define typed configuration models for tools, tool groups, MCP servers, external providers, Skill storage, Skill metadata, and tool policy defaults.
+- [x] 1.2 Add config fields for enabling built-in tools, sandbox tools, search providers, MCP tools, external-agent tools, and director-only subagent delegation.
+- [x] 1.3 Add validation that secrets are read from environment variables and never embedded in provider config.
+- [x] 1.4 Add tests for config defaults, invalid tool references, disabled providers, missing secrets, and unknown tool groups.
 
 ## 2. Local Sandbox Tools
 
-- [ ] 2.1 Implement sandbox-scoped file inspection tools: `ls`, `glob`, `grep`, and `read_file`.
-- [ ] 2.2 Implement sandbox-scoped file mutation tools: `write_file` and `str_replace`, with path validation and file operation locking.
-- [ ] 2.3 Implement sandbox command execution tools such as `bash` or `run_python`, disabled by default unless sandbox policy allows them.
-- [ ] 2.4 Implement artifact file tools for listing, reading, and writing files under controlled artifact roots.
-- [ ] 2.5 Implement MVP document inspection tools for PDF text extraction and optional PDF page/image extraction.
-- [ ] 2.6 Add tests for virtual path resolution, host path denial, host bash denial, output truncation, file write limits, binary read rejection, and artifact root isolation.
+- [x] 2.1 Implement sandbox-scoped file inspection tools: `ls`, `glob`, `grep`, and `read_file`.
+- [x] 2.2 Implement sandbox-scoped file mutation tools: `write_file` and `str_replace`, with path validation and file operation locking.
+- [x] 2.3 Implement sandbox command execution tools such as `bash` or `run_python`, disabled by default unless sandbox policy allows them.
+- [x] 2.4 Implement artifact file tools for listing, reading, and writing files under controlled artifact roots.
+- [x] 2.5 Implement MVP document inspection tools for PDF text extraction and optional PDF page/image extraction.
+- [x] 2.6 Add tests for virtual path resolution, host path denial, host bash denial, output truncation, file write limits, binary read rejection, and artifact root isolation.
 
 ## 3. Built-In And External Tools
 
-- [ ] 3.1 Implement built-in interaction tools for clarification, presenting files/artifacts, and optional image viewing when the selected model supports vision.
-- [ ] 3.2 Add provider interfaces or adapters for search/retrieval tools, starting with deterministic fake providers and a small MVP provider set.
-- [ ] 3.3 Add optional config entries for DDG, Jina AI, Serper, Brave, Tavily, Firecrawl, Browserless, Exa, arXiv, Semantic Scholar, and Crossref.
-- [ ] 3.4 Add tests for disabled providers, enabled fake providers, environment-secret handling, provider error sanitization, and untrusted tool output handling.
+- [x] 3.1 Implement built-in interaction tools for clarification, presenting files/artifacts, and optional image viewing when the selected model supports vision.
+- [x] 3.2 Add provider interfaces or adapters for search/retrieval tools, starting with deterministic fake providers and a small MVP provider set.
+- [x] 3.3 Add optional config entries for DDG, Jina AI, Serper, Brave, Tavily, Firecrawl, Browserless, Exa, arXiv, Semantic Scholar, and Crossref.
+- [x] 3.4 Add tests for disabled providers, enabled fake providers, environment-secret handling, provider error sanitization, and untrusted tool output handling.
 
 ## 4. Tool Registry And Policy
 
-- [ ] 4.1 Implement tool registry aggregation from configured tools, built-in tools, sandbox tools, MCP tools, external-agent tools, and optional subagent delegation tools.
-- [ ] 4.2 Implement deterministic duplicate tool-name handling with warnings for skipped duplicates.
-- [ ] 4.3 Implement tool filtering by tool group, global policy, subagent allowlist, subagent denylist, Skill policy, runtime context, model capability, and sandbox policy.
-- [ ] 4.4 Ensure policy is fail-closed: a tool denied by any policy layer is not bound to the agent.
-- [ ] 4.5 Add tests for group filtering, duplicate names, skill restrictions, model capability restrictions, sandbox denial, runtime denial, and fail-closed behavior.
+- [x] 4.1 Implement tool registry aggregation from configured tools, built-in tools, sandbox tools, MCP tools, external-agent tools, and optional subagent delegation tools.
+- [x] 4.2 Implement deterministic duplicate tool-name handling with warnings for skipped duplicates.
+- [x] 4.3 Implement tool filtering by tool group, global policy, subagent allowlist, subagent denylist, Skill policy, runtime context, model capability, and sandbox policy.
+- [x] 4.4 Ensure policy is fail-closed: a tool denied by any policy layer is not bound to the agent.
+- [x] 4.5 Add tests for group filtering, duplicate names, skill restrictions, model capability restrictions, sandbox denial, runtime denial, and fail-closed behavior.
 
 ## 5. MCP And External Agent Tools
 
-- [ ] 5.1 Implement MCP tool initialization, runtime cache access, and MCP-source metadata tagging.
-- [ ] 5.2 Filter MCP tools per agent after registry assembly and policy evaluation.
-- [ ] 5.3 Add optional external-agent invocation tool support behind explicit configuration.
-- [ ] 5.4 Add tests for cached MCP tools, MCP server allowlists, MCP filtering per subagent, MCP tool-name collisions, external-agent disabled state, and untrusted MCP output handling.
+- [x] 5.1 Implement MCP tool initialization, runtime cache access, and MCP-source metadata tagging.
+- [x] 5.2 Filter MCP tools per agent after registry assembly and policy evaluation.
+- [x] 5.3 Add optional external-agent invocation tool support behind explicit configuration.
+- [x] 5.4 Add tests for cached MCP tools, MCP server allowlists, MCP filtering per subagent, MCP tool-name collisions, external-agent disabled state, and untrusted MCP output handling.
 
 ## 6. Skill Storage And Validation
 
-- [ ] 6.1 Define built-in Skill storage under `backend/coresearcher/skills/builtin/<skill-name>/` with `SKILL.md` and `skill.yaml`.
-- [ ] 6.2 Reserve future storage paths for user Skills, generated candidate Skills, enabled generated Skills, and Skill history under `storage/skills/`.
-- [ ] 6.3 Implement Skill metadata parsing and validation for name, description, allowed tools, allowed tool groups, output schema, and state/memory write permissions.
-- [ ] 6.4 Add bundled MVP Skills for literature review, paper reading, evidence curation, research critique, coding reproduction, memory extraction, and synthesis.
-- [ ] 6.5 Add tests for built-in Skill loading, invalid metadata, duplicate Skill names, generated Skill disabled state, and Skill history path handling.
+- [x] 6.1 Define built-in Skill storage under `backend/coresearcher/skills/builtin/<skill-name>/` with `SKILL.md` and `skill.yaml`.
+- [x] 6.2 Reserve future storage paths for user Skills, generated candidate Skills, enabled generated Skills, and Skill history under `storage/skills/`.
+- [x] 6.3 Implement Skill metadata parsing and validation for name, description, allowed tools, allowed tool groups, output schema, and state/memory write permissions.
+- [x] 6.4 Add bundled MVP Skills for literature review, paper reading, evidence curation, research critique, coding reproduction, memory extraction, and synthesis.
+- [x] 6.5 Add tests for built-in Skill loading, invalid metadata, duplicate Skill names, generated Skill disabled state, and Skill history path handling.
 
 ## 7. Skill-To-Tool Runtime Integration
 
-- [ ] 7.1 Load configured Skills for the Research Director and built-in subagents.
-- [ ] 7.2 Inject Skill content as runtime guidance while enforcing structured Skill metadata in tool policy.
-- [ ] 7.3 Filter tools by Skill allowed tool names and allowed tool groups before binding tools to agents.
-- [ ] 7.4 Add tests for paper-reading Skill tool restrictions, coding-reproduction sandbox access, memory-extraction write restrictions, and legacy Skill behavior without explicit allowed tools.
+- [x] 7.1 Load configured Skills for the Research Director and built-in subagents.
+- [x] 7.2 Inject Skill content as runtime guidance while enforcing structured Skill metadata in tool policy.
+- [x] 7.3 Filter tools by Skill allowed tool names and allowed tool groups before binding tools to agents.
+- [x] 7.4 Add tests for paper-reading Skill tool restrictions, coding-reproduction sandbox access, memory-extraction write restrictions, and legacy Skill behavior without explicit allowed tools.
 
 ## 8. Domain Command Boundary
 
-- [ ] 8.1 Define domain command interfaces for research state updates, evidence writes, claim creation, decision recording, critique recording, and memory promotion.
-- [ ] 8.2 Ensure domain commands are invoked only after backend validation of structured model outputs or user actions.
-- [ ] 8.3 Ensure domain commands are excluded from ordinary LLM tool registry output.
-- [ ] 8.4 Add tests that `create_evidence_item`, `record_decision`, `update_research_state`, and memory promotion are not exposed as regular tools.
-- [ ] 8.5 Add tests for backend validation before applying proposed state, evidence, decision, and memory changes.
+- [x] 8.1 Define domain command interfaces for research state updates, evidence writes, claim creation, decision recording, critique recording, and memory promotion.
+- [x] 8.2 Ensure domain commands are invoked only after backend validation of structured model outputs or user actions.
+- [x] 8.3 Ensure domain commands are excluded from ordinary LLM tool registry output.
+- [x] 8.4 Add tests that `create_evidence_item`, `record_decision`, `update_research_state`, and memory promotion are not exposed as regular tools.
+- [x] 8.5 Add tests for backend validation before applying proposed state, evidence, decision, and memory changes.
 
 ## 9. Subagent Tool Boundaries
 
-- [ ] 9.1 Expose subagent delegation only to the Research Director graph.
-- [ ] 9.2 Ensure subagent runtimes never receive subagent delegation tools, preserving no-recursive-delegation behavior.
-- [ ] 9.3 Define default tool groups for `literature-scout`, `paper-reader`, `methodologist`, `coding-researcher`, `evidence-curator`, `critic`, `synthesizer`, and any memory service.
-- [ ] 9.4 Add tests for each built-in subagent's effective tool list and recursive delegation denial.
+- [x] 9.1 Expose subagent delegation only to the Research Director graph.
+- [x] 9.2 Ensure subagent runtimes never receive subagent delegation tools, preserving no-recursive-delegation behavior.
+- [x] 9.3 Define default tool groups for `literature-scout`, `paper-reader`, `methodologist`, `coding-researcher`, `evidence-curator`, `critic`, `synthesizer`, and any memory service.
+- [x] 9.4 Add tests for each built-in subagent's effective tool list and recursive delegation denial.
 
 ## 10. Documentation And Verification
 
-- [ ] 10.1 Document the Tool vs Domain Command vs Skill boundary.
-- [ ] 10.2 Document local tool groups, external provider config, MCP tool loading, Skill storage layout, and fail-closed policy.
-- [ ] 10.3 Add deterministic integration tests covering registry assembly, Skill loading, MCP filtering, search provider fakes, sandbox tools, and domain command exclusion.
-- [ ] 10.4 Run the fastest relevant validation and test commands, and record them in the implementation summary.
+- [x] 10.1 Document the Tool vs Domain Command vs Skill boundary.
+- [x] 10.2 Document local tool groups, external provider config, MCP tool loading, Skill storage layout, and fail-closed policy.
+- [x] 10.3 Add deterministic integration tests covering registry assembly, Skill loading, MCP filtering, search provider fakes, sandbox tools, and domain command exclusion.
+- [x] 10.4 Run the fastest relevant validation and test commands, and record them in the implementation summary.
 
 ---
 
