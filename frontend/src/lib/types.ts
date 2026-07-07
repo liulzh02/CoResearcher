@@ -99,4 +99,16 @@ export type ResearchEvent = {
   run_id: string
   payload: Record<string, unknown>
   created_at: string
+  phase?: string | null
+  level?: string
+  status?: string | null
+  title?: string | null
+  message?: string | null
+  parent_id?: string | null
+  sequence?: number | null
+  duration_ms?: number | null
+}
+
+export type RunEventsResponse = {
+  events: ResearchEvent[]
 }

@@ -1,6 +1,7 @@
 import pytest
 from fastapi.testclient import TestClient
 
+from coresearcher.domain.events import EventStore, ResearchEvent, ResearchEventType, RunEventEmitter
 from coresearcher.gateway.app import create_app
 from coresearcher.services import ResearchService
 
@@ -16,6 +17,9 @@ async def test_research_service_run_and_events():
     assert updated.messages[-1].role == "assistant"
     assert any(event.type.value == "subagent.completed" for event in events)
     assert updated.state.artifacts
+    assert all(event.sequence for event in events)
+    assert any(event.type.value == "context.build.completed" for event in events)
+    assert any(event.type.value == "director.route.selected" for event in events)
 
 
 def test_create_app_has_health_route(monkeypatch):
@@ -69,7 +73,9 @@ def test_api_thread_run_sse_artifact_and_events(monkeypatch):
 
     events = client.get(f"/research/runs/{payload['run_id']}/events")
     assert events.status_code == 200
-    assert any(event["type"] == "subagent.completed" for event in events.json()["events"])
+    replayed = events.json()["events"]
+    assert any(event["type"] == "subagent.completed" for event in replayed)
+    assert all("phase" in event and "status" in event and "title" in event for event in replayed)
 
     stream = client.post(
         f"/research/threads/{thread_id}/runs/stream",
@@ -78,6 +84,7 @@ def test_api_thread_run_sse_artifact_and_events(monkeypatch):
     )
     assert stream.status_code == 200
     assert "event: run.started" in stream.text
+    assert "event: context.build.completed" in stream.text
 
 
 def test_models_endpoint_reports_configured_readiness(tmp_path, monkeypatch):
@@ -188,6 +195,98 @@ models:
 
     assert run.status_code == 200
     assert run.json()["final_response"].startswith("Fake model response:")
+
+
+def test_research_event_envelope_is_backward_compatible_and_hierarchical(caplog):
+    import logging
+
+    caplog.set_level(logging.INFO, logger="coresearcher.events")
+    store = EventStore()
+    emitter = RunEventEmitter(store)
+
+    event = emitter.emit(
+        ResearchEvent(
+            type=ResearchEventType.MODEL_REQUEST_STARTED,
+            thread_id="thread_1",
+            run_id="run_1",
+            parent_id="evt_parent",
+            payload={"model_id": "researcher"},
+        )
+    )
+
+    assert event.id
+    assert event.thread_id == "thread_1"
+    assert event.run_id == "run_1"
+    assert event.type == ResearchEventType.MODEL_REQUEST_STARTED
+    assert event.payload == {"model_id": "researcher"}
+    assert event.parent_id == "evt_parent"
+    assert event.phase.value == "model"
+    assert event.status.value == "running"
+    assert event.title == "Calling model"
+    assert event.sequence == 1
+    assert event.created_at
+    assert "run_1" in caplog.text
+    assert "evt_parent" in caplog.text
+
+
+def test_configured_model_stream_emits_trace_order_and_replay(tmp_path, monkeypatch):
+    config_path = tmp_path / "coresearcher.yaml"
+    config_path.write_text(
+        """
+models:
+  models:
+    researcher:
+      name: researcher
+      provider_class: coresearcher.models.factory.FakeChatModel
+      secret_env_vars:
+        - CORESEARCHER_TEST_MODEL_KEY
+  roles:
+    default_model: researcher
+""",
+        encoding="utf-8",
+    )
+    monkeypatch.setenv("CORESEARCHER_CONFIG", str(config_path))
+    monkeypatch.setenv("CORESEARCHER_TEST_MODEL_KEY", "secret-value")
+    client = TestClient(create_app())
+    created = client.post(
+        "/research/threads",
+        json={"initial_message": "Real research"},
+        headers={"x-user-id": "u1"},
+    )
+    thread_id = created.json()["thread"]["id"]
+
+    stream = client.post(
+        f"/research/threads/{thread_id}/runs/stream",
+        json={"message": "Launch real model path"},
+        headers={"x-user-id": "u1"},
+    )
+
+    assert stream.status_code == 200
+    for event_name in [
+        "run.started",
+        "thread.loaded",
+        "model.selected",
+        "model.request.started",
+        "model.request.completed",
+        "final.response",
+        "thread.saved",
+        "run.completed",
+    ]:
+        assert f"event: {event_name}" in stream.text
+    assert stream.text.index("event: model.request.started") < stream.text.index(
+        "event: model.request.completed"
+    )
+
+    run_line = next(line for line in stream.text.splitlines() if line.startswith("data: "))
+    import json
+
+    run_id = json.loads(run_line.removeprefix("data: "))["run_id"]
+    replay = client.get(f"/research/runs/{run_id}/events").json()["events"]
+
+    assert [event["sequence"] for event in replay] == list(range(1, len(replay) + 1))
+    assert any(event["type"] == "model.selected" for event in replay)
+    assert all("secret-value" not in str(event) for event in replay)
+    assert all("phase" in event and "status" in event for event in replay)
 
 
 def test_api_scopes_threads_by_user_and_structures_errors(monkeypatch):

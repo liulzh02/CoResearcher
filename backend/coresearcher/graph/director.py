@@ -64,9 +64,13 @@ def _requests_literature_work(message: str) -> bool:
     return any(word in lowered for word in words)
 
 
-def _node_event(state: DirectorGraphState, message: str) -> ResearchEvent:
+def _node_event(
+    state: DirectorGraphState,
+    message: str,
+    event_type: ResearchEventType = ResearchEventType.RUN_PROGRESS,
+) -> ResearchEvent:
     return ResearchEvent(
-        type=ResearchEventType.RUN_PROGRESS,
+        type=event_type,
         thread_id=state["thread_id"],
         run_id=state["run_id"],
         payload={"message": message},
@@ -80,7 +84,7 @@ def _load_context(state: DirectorGraphState) -> DirectorGraphState:
         research_state=research_state,
     )
     events = state.get("events", [])
-    events.append(_node_event(state, "Loaded research context."))
+    events.append(_node_event(state, "Loaded research context.", ResearchEventType.CONTEXT_BUILD_COMPLETED))
     return {
         **state,
         "research_state": research_state,
@@ -112,7 +116,14 @@ def _director_reasoning(state: DirectorGraphState) -> DirectorGraphState:
         route = "answer"
         plan = ["Create a concise research direction response and record open questions."]
 
-    events.append(_node_event(state, f"Director selected route: {route}."))
+    events.append(
+        ResearchEvent(
+            type=ResearchEventType.DIRECTOR_ROUTE_SELECTED,
+            thread_id=state["thread_id"],
+            run_id=state["run_id"],
+            payload={"route": route, "message": f"Director selected route: {route}."},
+        )
+    )
     return {**state, "events": events, "route": route, "plan": plan}
 
 
@@ -145,7 +156,17 @@ def _delegation_planning(state: DirectorGraphState) -> DirectorGraphState:
         elif "critic" in item:
             tasks.append(SubagentTask(subagent_name="critic", description=item))
     events = state.get("events", [])
-    events.append(_node_event(state, f"Planned {len(tasks)} subagent task(s)."))
+    events.append(
+        ResearchEvent(
+            type=ResearchEventType.DIRECTOR_PLAN_CREATED,
+            thread_id=state["thread_id"],
+            run_id=state["run_id"],
+            payload={
+                "task_count": len(tasks),
+                "message": f"Planned {len(tasks)} subagent task(s).",
+            },
+        )
+    )
     return {**state, "subagent_tasks": tasks, "events": events}
 
 
@@ -204,6 +225,8 @@ def _critique(state: DirectorGraphState) -> DirectorGraphState:
 
 
 def _synthesis(state: DirectorGraphState) -> DirectorGraphState:
+    events = state.get("events", [])
+    events.append(_node_event(state, "Synthesizing final response.", ResearchEventType.DIRECTOR_SYNTHESIS_STARTED))
     plan = state.get("plan", [])
     subagent_results = state.get("subagent_results", [])
     if subagent_results:
@@ -228,7 +251,6 @@ def _synthesis(state: DirectorGraphState) -> DirectorGraphState:
             "A useful next step is to turn the broad goal into 2-3 testable research questions, "
             "then compare literature coverage, method feasibility, and evidence gaps."
         )
-    events = state.get("events", [])
     events.append(
         ResearchEvent(
             type=ResearchEventType.FINAL_RESPONSE,

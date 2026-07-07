@@ -1,9 +1,10 @@
 from __future__ import annotations
 
 from collections.abc import AsyncIterator
+from time import monotonic
 
 from coresearcher.artifacts import create_research_brief
-from coresearcher.domain.events import EventStore, ResearchEvent, ResearchEventType
+from coresearcher.domain.events import EventStore, ResearchEvent, ResearchEventType, RunEventEmitter
 from coresearcher.domain.state import ChatMessage, ResearchThread, new_id
 from coresearcher.graph import make_research_director
 from coresearcher.models import ModelFactory
@@ -19,8 +20,30 @@ class ResearchService:
     ) -> None:
         self.repository = repository or InMemoryResearchRepository()
         self.event_store = event_store or EventStore()
+        self.event_emitter = RunEventEmitter(self.event_store)
         self.model_factory = model_factory or ModelFactory()
         self.graph = make_research_director()
+
+    def _emit(self, event: ResearchEvent) -> ResearchEvent:
+        return self.event_emitter.emit(event)
+
+    def _record_events(self, events: list[ResearchEvent]) -> list[ResearchEvent]:
+        return [self._emit(event) for event in events]
+
+    def _safe_user_payload(self, message: str) -> dict[str, str | int]:
+        return {"message": message[:240], "message_length": len(message)}
+
+    def _model_messages(self, message: str) -> list[dict[str, str]]:
+        return [
+            {
+                "role": "system",
+                "content": (
+                    "You are CoResearcher, a human-in-the-loop scientific research "
+                    "assistant. Give a concise, evidence-aware next response."
+                ),
+            },
+            {"role": "user", "content": message},
+        ]
 
     async def create_thread(
         self,
@@ -62,30 +85,50 @@ class ResearchService:
                 type=ResearchEventType.RUN_STARTED,
                 thread_id=thread.id,
                 run_id=run_id,
-                payload={"message": message},
+                payload=self._safe_user_payload(message),
             )
         ]
         thread.add_message("user", message)
         if self.model_factory.resolve_model_name() != "fake":
+            model_key = self.model_factory.resolve_model_name()
+            model_config = self.model_factory.get_config()
             events.append(
                 ResearchEvent(
-                    type=ResearchEventType.RUN_PROGRESS,
+                    type=ResearchEventType.THREAD_LOADED,
                     thread_id=thread.id,
                     run_id=run_id,
-                    payload={"message": "Invoking configured chat model."},
+                    payload={"message_count": len(thread.messages)},
                 )
             )
+            events.append(
+                ResearchEvent(
+                    type=ResearchEventType.MODEL_SELECTED,
+                    thread_id=thread.id,
+                    run_id=run_id,
+                    payload={"model_id": model_key, "model_name": model_config.name},
+                )
+            )
+            events.append(
+                ResearchEvent(
+                    type=ResearchEventType.MODEL_REQUEST_STARTED,
+                    thread_id=thread.id,
+                    run_id=run_id,
+                    payload={"model_id": model_key, "model_name": model_config.name},
+                )
+            )
+            model_started = monotonic()
             final_response = await model.ainvoke(
-                [
-                    {
-                        "role": "system",
-                        "content": (
-                            "You are CoResearcher, a human-in-the-loop scientific research "
-                            "assistant. Give a concise, evidence-aware next response."
-                        ),
-                    },
-                    {"role": "user", "content": message},
-                ]
+                self._model_messages(message)
+            )
+            duration_ms = int((monotonic() - model_started) * 1000)
+            events.append(
+                ResearchEvent(
+                    type=ResearchEventType.MODEL_REQUEST_COMPLETED,
+                    thread_id=thread.id,
+                    run_id=run_id,
+                    payload={"model_id": model_key, "response_length": len(final_response)},
+                    duration_ms=duration_ms,
+                )
             )
             thread.messages.append(ChatMessage(role="assistant", content=final_response))
             events.append(
@@ -105,10 +148,32 @@ class ResearchService:
                 )
             )
             await self.repository.save(thread)
-            for event in events:
-                self.event_store.append(event)
-            return thread, events
+            events.append(
+                ResearchEvent(
+                    type=ResearchEventType.THREAD_SAVED,
+                    thread_id=thread.id,
+                    run_id=run_id,
+                    payload={"message_count": len(thread.messages)},
+                )
+            )
+            return thread, self._record_events(events)
 
+        events.append(
+            ResearchEvent(
+                type=ResearchEventType.THREAD_LOADED,
+                thread_id=thread.id,
+                run_id=run_id,
+                payload={"message_count": len(thread.messages)},
+            )
+        )
+        events.append(
+            ResearchEvent(
+                type=ResearchEventType.CONTEXT_BUILD_STARTED,
+                thread_id=thread.id,
+                run_id=run_id,
+                payload={"message": "Building director context."},
+            )
+        )
         result = await self.graph.ainvoke(
             {
                 "thread_id": thread.id,
@@ -136,9 +201,15 @@ class ResearchService:
             )
 
         await self.repository.save(thread)
-        for event in result["events"]:
-            self.event_store.append(event)
-        return thread, result["events"]
+        result["events"].append(
+            ResearchEvent(
+                type=ResearchEventType.THREAD_SAVED,
+                thread_id=thread.id,
+                run_id=run_id,
+                payload={"message_count": len(thread.messages)},
+            )
+        )
+        return thread, self._record_events(result["events"])
 
     async def stream_research(
         self,
@@ -157,58 +228,108 @@ class ResearchService:
         if not thread:
             raise KeyError("Research thread not found")
         model = self.model_factory.create()
+        model_key = self.model_factory.resolve_model_name()
+        model_config = self.model_factory.get_config()
         run_id = new_id("run")
 
-        async def emit(event: ResearchEvent) -> ResearchEvent:
-            self.event_store.append(event)
-            return event
-
-        yield await emit(
+        run_started = monotonic()
+        yield self._emit(
             ResearchEvent(
                 type=ResearchEventType.RUN_STARTED,
                 thread_id=thread.id,
                 run_id=run_id,
-                payload={"message": message},
+                payload=self._safe_user_payload(message),
             )
         )
         thread.add_message("user", message)
-        yield await emit(
+        yield self._emit(
             ResearchEvent(
-                type=ResearchEventType.RUN_PROGRESS,
+                type=ResearchEventType.THREAD_LOADED,
                 thread_id=thread.id,
                 run_id=run_id,
-                payload={"message": "Streaming configured chat model."},
+                payload={"message_count": len(thread.messages)},
+            )
+        )
+        yield self._emit(
+            ResearchEvent(
+                type=ResearchEventType.MODEL_SELECTED,
+                thread_id=thread.id,
+                run_id=run_id,
+                payload={"model_id": model_key, "model_name": model_config.name},
+            )
+        )
+        yield self._emit(
+            ResearchEvent(
+                type=ResearchEventType.MODEL_REQUEST_STARTED,
+                thread_id=thread.id,
+                run_id=run_id,
+                payload={"model_id": model_key, "model_name": model_config.name},
             )
         )
 
-        messages = [
-            {
-                "role": "system",
-                "content": (
-                    "You are CoResearcher, a human-in-the-loop scientific research "
-                    "assistant. Give a concise, evidence-aware next response."
-                ),
-            },
-            {"role": "user", "content": message},
-        ]
+        messages = self._model_messages(message)
         final_parts: list[str] = []
-        if hasattr(model, "astream"):
-            async for delta in model.astream(messages):
-                final_parts.append(delta)
-                yield await emit(
-                    ResearchEvent(
-                        type=ResearchEventType.FINAL_RESPONSE_DELTA,
-                        thread_id=thread.id,
-                        run_id=run_id,
-                        payload={"content": delta},
+        model_started = monotonic()
+        first_token_seen = False
+        try:
+            if hasattr(model, "astream"):
+                async for delta in model.astream(messages):
+                    if not first_token_seen:
+                        first_token_seen = True
+                        yield self._emit(
+                            ResearchEvent(
+                                type=ResearchEventType.MODEL_FIRST_TOKEN,
+                                thread_id=thread.id,
+                                run_id=run_id,
+                                payload={"model_id": model_key},
+                                duration_ms=int((monotonic() - model_started) * 1000),
+                            )
+                        )
+                    final_parts.append(delta)
+                    yield self._emit(
+                        ResearchEvent(
+                            type=ResearchEventType.FINAL_RESPONSE_DELTA,
+                            thread_id=thread.id,
+                            run_id=run_id,
+                            payload={"content": delta, "is_assistant_delta": True},
+                        )
                     )
+                final_response = "".join(final_parts)
+            else:
+                final_response = await model.ainvoke(messages)
+        except Exception as exc:
+            yield self._emit(
+                ResearchEvent(
+                    type=ResearchEventType.RUN_FAILED,
+                    thread_id=thread.id,
+                    run_id=run_id,
+                    payload={
+                        "error": exc.__class__.__name__,
+                        "detail": str(exc)[:240],
+                        "subsystem": "model",
+                    },
+                    duration_ms=int((monotonic() - run_started) * 1000),
                 )
-            final_response = "".join(final_parts)
-        else:
-            final_response = await model.ainvoke(messages)
+            )
+            return
+        model_duration_ms = int((monotonic() - model_started) * 1000)
+
+        yield self._emit(
+            ResearchEvent(
+                type=ResearchEventType.MODEL_REQUEST_COMPLETED,
+                thread_id=thread.id,
+                run_id=run_id,
+                payload={
+                    "model_id": model_key,
+                    "response_length": len(final_response),
+                    "delta_count": len(final_parts),
+                },
+                duration_ms=model_duration_ms,
+            )
+        )
 
         thread.messages.append(ChatMessage(role="assistant", content=final_response))
-        yield await emit(
+        yield self._emit(
             ResearchEvent(
                 type=ResearchEventType.FINAL_RESPONSE,
                 thread_id=thread.id,
@@ -216,15 +337,24 @@ class ResearchService:
                 payload={"content": final_response},
             )
         )
-        yield await emit(
+        await self.repository.save(thread)
+        yield self._emit(
+            ResearchEvent(
+                type=ResearchEventType.THREAD_SAVED,
+                thread_id=thread.id,
+                run_id=run_id,
+                payload={"message_count": len(thread.messages)},
+            )
+        )
+        yield self._emit(
             ResearchEvent(
                 type=ResearchEventType.RUN_COMPLETED,
                 thread_id=thread.id,
                 run_id=run_id,
                 payload={"final_response": final_response},
+                duration_ms=int((monotonic() - run_started) * 1000),
             )
         )
-        await self.repository.save(thread)
 
     async def get_artifact(self, thread_id: str, artifact_id: str, user_id: str) -> str | None:
         thread = await self.repository.get(thread_id, user_id=user_id)

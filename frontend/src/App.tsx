@@ -2,8 +2,11 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import './App.css'
 import { CoResearcherApi, DEFAULT_BACKEND_URL } from './lib/api'
 import { getRuntimeStatus } from './lib/runtime'
-import { streamResearchRun, type SseFrame } from './lib/sse'
-import type { ApiRecord, HealthResponse, ModelsResponse, ResearchThread } from './lib/types'
+import { deriveRunView } from './lib/runTrace'
+import { streamResearchRun } from './lib/sse'
+import type { ApiRecord, HealthResponse, ModelsResponse, ResearchEvent, ResearchThread } from './lib/types'
+
+type Panel = 'trace' | 'raw' | 'state' | 'evidence' | 'artifacts' | 'registries' | 'memory'
 
 function App() {
   const api = useMemo(() => new CoResearcherApi(DEFAULT_BACKEND_URL), [])
@@ -14,11 +17,10 @@ function App() {
   const [question, setQuestion] = useState('')
   const [message, setMessage] = useState('')
   const [streaming, setStreaming] = useState(false)
-  const [streamingResponse, setStreamingResponse] = useState('')
-  const [events, setEvents] = useState<SseFrame[]>([])
-  const [panel, setPanel] = useState<'state' | 'evidence' | 'artifacts' | 'registries' | 'memory'>(
-    'state',
-  )
+  const [runEvents, setRunEvents] = useState<ResearchEvent[]>([])
+  const [selectedRunId, setSelectedRunId] = useState<string | null>(null)
+  const [latestRunByThread, setLatestRunByThread] = useState<Record<string, string>>({})
+  const [panel, setPanel] = useState<Panel>('trace')
   const [panelData, setPanelData] = useState<unknown>(null)
   const [panelError, setPanelError] = useState('')
   const [modelsResponse, setModelsResponse] = useState<ModelsResponse>({
@@ -63,9 +65,13 @@ function App() {
   }, [api])
 
   const loadPanel = useCallback(
-    async (nextPanel: typeof panel, thread: ResearchThread) => {
+    async (nextPanel: Panel, thread: ResearchThread) => {
       setPanelError('')
       try {
+        if (nextPanel === 'trace' || nextPanel === 'raw') {
+          setPanelData(null)
+          return
+        }
         if (nextPanel === 'state') setPanelData(thread.state)
         if (nextPanel === 'evidence') setPanelData(await api.getEvidence(thread.id))
         if (nextPanel === 'artifacts') setPanelData(thread.state.artifacts ?? [])
@@ -90,6 +96,22 @@ function App() {
     [api, registries],
   )
 
+  const loadRunEvents = useCallback(
+    async (runId: string | null) => {
+      if (!runId) {
+        setRunEvents([])
+        return
+      }
+      try {
+        const response = await api.getRunEvents(runId)
+        setRunEvents(response.events)
+      } catch (error) {
+        setPanelError(error instanceof Error ? error.message : String(error))
+      }
+    },
+    [api],
+  )
+
   useEffect(() => {
     void refreshHealth()
     void refreshThreads()
@@ -107,47 +129,70 @@ function App() {
     setThreads((items) => [response.thread, ...items.filter((item) => item.id !== response.thread.id)])
     setSelectedThread(response.thread)
     setQuestion('')
-    setEvents([])
+    setRunEvents([])
+    setSelectedRunId(null)
   }
 
   async function selectThread(threadId: string) {
     const response = await api.getThread(threadId)
     setSelectedThread(response.thread)
-    setEvents([])
+    const runId = latestRunByThread[threadId] ?? null
+    setSelectedRunId(runId)
+    await loadRunEvents(runId)
   }
 
   async function runSelectedThread() {
     if (!selectedThread || !message.trim()) return
     const nextMessage = message.trim()
+    const threadId = selectedThread.id
+    let currentRunId: string | null = null
     setMessage('')
     setStreaming(true)
-    setStreamingResponse('')
-    setEvents([])
+    setRunEvents([])
+    setSelectedRunId(null)
     await streamResearchRun(api.streamUrl(selectedThread.id), nextMessage, {
-      onFrame: (frame) => setEvents((items) => [...items, frame]),
       onEvent: (event) => {
-        if (event.type === 'final.response.delta') {
-          const content = event.payload.content
-          if (typeof content === 'string') {
-            setStreamingResponse((current) => current + content)
-          }
+        if (event.run_id) {
+          currentRunId = event.run_id
+          setSelectedRunId(event.run_id)
         }
-        if (event.type === 'final.response' || event.type === 'run.completed') {
-          void selectThread(selectedThread.id)
+        setRunEvents((items) => [...items, event])
+        if (event.type === 'final.response.delta') {
+          return
         }
       },
       onError: (error) =>
-        setEvents((items) => [...items, { event: 'client.error', data: error.message }]),
+        setRunEvents((items) => [
+          ...items,
+          {
+            id: `client_${Date.now()}`,
+            type: 'error.structured',
+            thread_id: threadId,
+            run_id: currentRunId ?? '',
+            payload: { error: 'ClientError', detail: error.message },
+            created_at: new Date().toISOString(),
+            phase: 'error',
+            status: 'failed',
+            title: 'Client error',
+            message: error.message,
+          },
+        ]),
     })
     setStreaming(false)
-    setStreamingResponse('')
-    await selectThread(selectedThread.id)
+    if (currentRunId) {
+      setLatestRunByThread((items) => ({ ...items, [threadId]: currentRunId as string }))
+      setSelectedRunId(currentRunId)
+      await loadRunEvents(currentRunId)
+    }
+    const refreshed = await api.getThread(threadId)
+    setSelectedThread(refreshed.thread)
   }
 
   const messageCount = selectedThread?.messages.length ?? 0
   const evidenceCount = selectedThread?.state.evidence_items?.length ?? 0
   const artifactCount = selectedThread?.state.artifacts?.length ?? 0
   const runtime = getRuntimeStatus(modelsResponse)
+  const runView = deriveRunView(runEvents)
 
   return (
     <main className="workbench">
@@ -227,18 +272,12 @@ function App() {
               <p>{item.content}</p>
             </article>
           ))}
-          {streamingResponse ? (
+          {runView.assistantDraft && streaming ? (
             <article className="message assistant">
               <span>assistant</span>
-              <p>{streamingResponse}</p>
+              <p>{runView.assistantDraft}</p>
             </article>
           ) : null}
-          {events.map((event, index) => (
-            <article className="event" key={`${event.event}-${index}`}>
-              <span>{event.event}</span>
-              <pre>{event.data}</pre>
-            </article>
-          ))}
         </div>
 
         <footer className="run-composer">
@@ -264,7 +303,7 @@ function App() {
 
       <aside className="inspector">
         <nav aria-label="Inspection panels">
-          {(['state', 'evidence', 'artifacts', 'registries', 'memory'] as const).map((item) => (
+          {(['trace', 'raw', 'state', 'evidence', 'artifacts', 'registries', 'memory'] as const).map((item) => (
             <button
               type="button"
               className={panel === item ? 'selected' : ''}
@@ -276,9 +315,65 @@ function App() {
           ))}
         </nav>
         {panelError ? <p className="inline-error">{panelError}</p> : null}
-        <pre className="panel">{formatPanel(panelData)}</pre>
+        {panel === 'trace' ? (
+          <RunTracePanel runView={runView} streaming={streaming} selectedRunId={selectedRunId} />
+        ) : panel === 'raw' ? (
+          <pre className="panel">{formatPanel(runView.rawEvents)}</pre>
+        ) : (
+          <pre className="panel">{formatPanel(panelData)}</pre>
+        )}
       </aside>
     </main>
+  )
+}
+
+function RunTracePanel({
+  runView,
+  streaming,
+  selectedRunId,
+}: {
+  runView: ReturnType<typeof deriveRunView>
+  streaming: boolean
+  selectedRunId: string | null
+}) {
+  if (runView.steps.length === 0) {
+    return <p className="panel empty">No run trace yet.</p>
+  }
+
+  return (
+    <section className="trace-panel">
+      <header>
+        <div>
+          <strong>{selectedRunId ?? runView.metrics.runId ?? 'Current run'}</strong>
+          <span className={`trace-status ${runView.status}`}>{streaming ? 'running' : runView.status}</span>
+        </div>
+        <p>
+          {runView.metrics.modelName ? `${runView.metrics.modelName} · ` : ''}
+          {runView.metrics.deltaCount} deltas
+          {runView.metrics.elapsedMs !== null ? ` · ${runView.metrics.elapsedMs}ms` : ''}
+        </p>
+      </header>
+      {runView.error ? (
+        <p className="inline-error">
+          {runView.error.error}: {runView.error.detail}
+        </p>
+      ) : null}
+      <ol>
+        {runView.steps.map((step) => (
+          <li className={`trace-step ${step.status}`} key={step.id}>
+            <span>{step.phase}</span>
+            <div>
+              <strong>{step.title}</strong>
+              <p>{step.message}</p>
+              <small>
+                #{step.sequence || '-'} · {step.type}
+                {step.duration_ms ? ` · ${step.duration_ms}ms` : ''}
+              </small>
+            </div>
+          </li>
+        ))}
+      </ol>
+    </section>
   )
 }
 

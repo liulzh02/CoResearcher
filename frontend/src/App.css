@@ -296,6 +296,99 @@ button:disabled {
   overflow-wrap: anywhere;
 }
 
+.trace-panel {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  border: 1px solid var(--line);
+  background: var(--paper);
+  border-radius: 8px;
+  padding: 12px;
+}
+
+.trace-panel header {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-bottom: 12px;
+}
+
+.trace-panel header div {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.trace-panel header p,
+.trace-step p,
+.trace-step small {
+  margin: 0;
+  color: var(--muted);
+}
+
+.trace-panel ol {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin: 0;
+  padding: 0;
+}
+
+.trace-status,
+.trace-step > span {
+  min-height: 24px;
+  display: inline-flex;
+  align-items: center;
+  padding: 0 8px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--panel);
+  font: 12px/1 var(--mono);
+}
+
+.trace-status.running,
+.trace-step.running > span {
+  border-color: color-mix(in srgb, var(--accent), transparent 35%);
+  color: var(--accent);
+}
+
+.trace-status.completed,
+.trace-step.completed > span {
+  border-color: color-mix(in srgb, var(--ok), transparent 40%);
+  color: var(--ok);
+}
+
+.trace-status.failed,
+.trace-step.failed > span {
+  border-color: color-mix(in srgb, var(--bad), transparent 40%);
+  color: var(--bad);
+}
+
+.trace-step {
+  display: grid;
+  grid-template-columns: 88px minmax(0, 1fr);
+  gap: 10px;
+  padding: 10px;
+  border: 1px solid var(--line);
+  background: var(--panel);
+  border-radius: 8px;
+}
+
+.trace-step div {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.trace-step strong,
+.trace-step p,
+.trace-step small {
+  overflow-wrap: anywhere;
+}
+
 .inline-error {
   margin: 0;
   padding: 8px 10px;

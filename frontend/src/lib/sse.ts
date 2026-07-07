@@ -84,7 +84,23 @@ function emitFrames(input: string, callbacks: StreamCallbacks): void {
   for (const frame of parseSseFrames(input)) {
     callbacks.onFrame?.(frame)
     try {
-      callbacks.onEvent?.(JSON.parse(frame.data) as ResearchEvent, frame)
+      const parsed = JSON.parse(frame.data) as Partial<ResearchEvent> & Record<string, unknown>
+      const event =
+        typeof parsed.type === 'string'
+          ? (parsed as ResearchEvent)
+          : ({
+              id: `client_${Date.now()}`,
+              type: frame.event,
+              thread_id: '',
+              run_id: '',
+              payload: parsed,
+              created_at: new Date().toISOString(),
+              phase: frame.event === 'error.structured' ? 'error' : undefined,
+              status: frame.event === 'error.structured' ? 'failed' : undefined,
+              title: frame.event,
+              message: typeof parsed.detail === 'string' ? parsed.detail : undefined,
+            } satisfies ResearchEvent)
+      callbacks.onEvent?.(event, frame)
     } catch (error) {
       callbacks.onError?.(error instanceof Error ? error : new Error(String(error)))
     }

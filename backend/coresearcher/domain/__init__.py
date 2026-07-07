@@ -1,4 +1,11 @@
-from coresearcher.domain.events import ResearchEvent, ResearchEventType
+from coresearcher.domain.events import (
+    ResearchEvent,
+    ResearchEventLevel,
+    ResearchEventPhase,
+    ResearchEventStatus,
+    ResearchEventType,
+    RunEventEmitter,
+)
 from coresearcher.domain.commands import DomainCommandService
 from coresearcher.domain.state import (
     ArtifactRecord,
@@ -26,9 +33,13 @@ __all__ = [
     "OpenQuestion",
     "PaperRecord",
     "ResearchEvent",
+    "ResearchEventLevel",
+    "ResearchEventPhase",
+    "ResearchEventStatus",
     "ResearchEventType",
     "ResearchState",
     "ResearchThread",
+    "RunEventEmitter",
     "SourceLocator",
     "TodoItem",
 ]

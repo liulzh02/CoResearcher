@@ -70,6 +70,18 @@ class SubagentDispatcher:
             )
         ]
         async with self._semaphore:
+            events.append(
+                ResearchEvent(
+                    type=ResearchEventType.SUBAGENT_PROGRESS,
+                    thread_id=thread_id,
+                    run_id=run_id,
+                    payload={
+                        "subagent": config.name,
+                        "task_id": task.id,
+                        "message": f"{config.name} is preparing context.",
+                    },
+                )
+            )
             execution_observation: dict[str, Any] = {}
             limitations = ["MVP fake subagent runtime; no live provider or external tools used."]
             if config.name == "coding-researcher":

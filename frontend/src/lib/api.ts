@@ -6,6 +6,7 @@ import type {
   MemoryInspectResponse,
   MemoryResponse,
   ModelsResponse,
+  RunEventsResponse,
   RegistryResponse,
   RunResearchResponse,
   ThreadListResponse,
@@ -58,6 +59,10 @@ export class CoResearcherApi {
 
   getMessages(threadId: string): Promise<{ messages: unknown[] }> {
     return this.get(`/research/threads/${encodeURIComponent(threadId)}/messages`)
+  }
+
+  getRunEvents(runId: string): Promise<RunEventsResponse> {
+    return this.get(`/research/runs/${encodeURIComponent(runId)}/events`)
   }
 
   runResearch(threadId: string, message: string): Promise<RunResearchResponse> {
