@@ -8,6 +8,7 @@ import yaml
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from coresearcher.context.rendering import DEFAULT_RESERVED_CONTEXT_TAGS
+from coresearcher.models.settings import ModelRegistryConfig
 from coresearcher.tools.registry import ToolGroup
 
 
@@ -173,6 +174,7 @@ class AppSettings(BaseModel):
     environment: str = "local"
     persistence: PersistenceSettings = Field(default_factory=PersistenceSettings)
     gateway: GatewaySettings = Field(default_factory=GatewaySettings)
+    models: ModelRegistryConfig = Field(default_factory=ModelRegistryConfig)
     security: SecuritySettings = Field(default_factory=SecuritySettings)
     sandbox: SandboxSettings = Field(default_factory=SandboxSettings)
     tools: ToolRuntimeSettings = Field(default_factory=ToolRuntimeSettings)
@@ -189,7 +191,22 @@ def _deep_merge(base: dict[str, Any], override: dict[str, Any]) -> dict[str, Any
     return result
 
 
+def _load_dotenv(path: Path = Path(".env")) -> None:
+    if not path.exists():
+        return
+    for raw_line in path.read_text(encoding="utf-8").splitlines():
+        line = raw_line.strip()
+        if not line or line.startswith("#") or "=" not in line:
+            continue
+        key, value = line.split("=", 1)
+        key = key.strip()
+        value = value.strip().strip('"').strip("'")
+        if key and key not in os.environ:
+            os.environ[key] = value
+
+
 def load_settings(config_path: str | Path | None = None) -> AppSettings:
+    _load_dotenv()
     data: dict[str, Any] = {}
     path = Path(config_path or os.getenv("CORESEARCHER_CONFIG", ""))
     if path and str(path) != "." and path.exists():

@@ -40,6 +40,10 @@ def _memory_service(request: Request) -> MemoryService:
     return request.app.state.memory_service
 
 
+def _model_factory(request: Request) -> ModelFactory:
+    return request.app.state.model_factory
+
+
 def _safe_error(exc: Exception) -> StructuredError:
     return StructuredError(error=exc.__class__.__name__, detail=str(exc)[:300])
 
@@ -48,7 +52,8 @@ def create_app() -> FastAPI:
     settings = load_settings()
     app = FastAPI(title=settings.gateway.title)
     app.state.settings = settings
-    app.state.research_service = ResearchService()
+    app.state.model_factory = ModelFactory(settings.models)
+    app.state.research_service = ResearchService(model_factory=app.state.model_factory)
     app.state.kb = FakeKnowledgeBaseAdapter()
     memory_root = Path(os.getenv("CORESEARCHER_MEMORY_ROOT", "memory"))
     sqlite_path = os.getenv("CORESEARCHER_MEMORY_SQLITE_PATH")
@@ -65,9 +70,8 @@ def create_app() -> FastAPI:
         return {"status": "ok", "version": __version__}
 
     @app.get("/models")
-    async def models() -> dict:
-        factory = ModelFactory()
-        return {"models": list(factory.config.models.values())}
+    async def models(factory: ModelFactory = Depends(_model_factory)) -> dict:
+        return factory.list_model_status()
 
     @app.get("/tools")
     async def tools() -> dict:
@@ -148,6 +152,8 @@ def create_app() -> FastAPI:
             )
         except KeyError as exc:
             raise HTTPException(status_code=404, detail="Research thread not found") from exc
+        except RuntimeError as exc:
+            raise HTTPException(status_code=503, detail=str(exc)) from exc
         final_event = next((event for event in reversed(events) if event.type.value == "final.response"), None)
         run_id = events[0].run_id if events else None
         return RunResearchResponse(
@@ -165,12 +171,11 @@ def create_app() -> FastAPI:
     ) -> StreamingResponse:
         async def generate() -> AsyncIterator[str]:
             try:
-                _, events = await service.run_research(
+                async for event in service.stream_research(
                     thread_id=thread_id,
                     user_id=user_id,
                     message=body.message,
-                )
-                for event in events:
+                ):
                     yield event.to_sse()
             except Exception as exc:
                 safe = _safe_error(exc)

@@ -1,0 +1,33 @@
+:root {
+  --paper: #f7f3ea;
+  --panel: #fffcf4;
+  --ink: #22211f;
+  --muted: #6f6a61;
+  --line: #ded5c6;
+  --line-strong: #8d8170;
+  --accent: #146c63;
+  --ok: #247a4b;
+  --bad: #b03a2e;
+  --mono: 'Cascadia Code', 'SFMono-Regular', Consolas, monospace;
+  --sans: Aptos, 'Segoe UI', sans-serif;
+
+  font-family: var(--sans);
+  color: var(--ink);
+  background: var(--paper);
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+}
+
+#root {
+  min-height: 100svh;
+}

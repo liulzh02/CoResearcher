@@ -39,7 +39,7 @@ class ModelFactory:
 
     def create(self, role: str | None = None, model_name: str | None = None) -> Any:
         config = self.get_config(role=role, model_name=model_name)
-        missing = [name for name in config.secret_env_vars if not os.getenv(name)]
+        missing = config.missing_secret_env_vars()
         if missing:
             raise RuntimeError(f"Missing required secret environment variables: {', '.join(missing)}")
 
@@ -50,3 +50,12 @@ class ModelFactory:
         provider_class = getattr(module, class_name)
         return provider_class(**config.default_parameters)
 
+    def list_model_status(self) -> dict[str, Any]:
+        return {
+            "default_model": self.config.roles.default_model,
+            "role_overrides": dict(self.config.roles.role_overrides),
+            "models": [
+                model.readiness_dict(model_id=model_id)
+                for model_id, model in self.config.models.items()
+            ],
+        }

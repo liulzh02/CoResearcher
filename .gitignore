@@ -1,0 +1,6 @@
+.env
+configs/coresearcher.local.yaml
+__pycache__/
+*.py[cod]
+frontend/dist/
+frontend/node_modules/

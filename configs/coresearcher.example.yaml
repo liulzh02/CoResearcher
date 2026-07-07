@@ -8,6 +8,34 @@ gateway:
   title: CoResearcher API
   cors_origins: []
 
+models:
+  models:
+    fake:
+      name: fake
+      display_name: Fake local test model
+      provider_class: coresearcher.models.factory.FakeChatModel
+      supports_streaming: true
+      supports_tool_calling: true
+      supports_structured_output: true
+    # Copy this block into configs/coresearcher.local.yaml and set OPENAI_API_KEY
+    # in your shell environment. Do not put API key values in YAML.
+    deepseek:
+      name: deepseek-v4-pro
+      display_name: deepseek-v4-pro
+      provider_class: coresearcher.models.openai_compatible.OpenAICompatibleChatModel
+      supports_streaming: true
+      supports_tool_calling: true
+      supports_structured_output: true
+      secret_env_vars:
+        - DEEPSEEK_API_KEY
+      default_parameters:
+        model: deepseek-v4-pro
+        api_key_env: DEEPSEEK_API_KEY
+        base_url: https://api.deepseek.com/v1
+  roles:
+    default_model: deepseek
+    # default_model: gpt-4o-mini
+
 security:
   default_user_id: local-user
   max_subagent_concurrency: 3

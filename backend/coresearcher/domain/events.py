@@ -21,6 +21,7 @@ class ResearchEventType(StrEnum):
     STATE_UPDATED = "state.updated"
     EVIDENCE_CREATED = "evidence.created"
     ARTIFACT_CREATED = "artifact.created"
+    FINAL_RESPONSE_DELTA = "final.response.delta"
     FINAL_RESPONSE = "final.response"
     STRUCTURED_ERROR = "error.structured"
 
@@ -46,4 +47,3 @@ class EventStore(BaseModel):
 
     def for_run(self, run_id: str) -> list[ResearchEvent]:
         return [event for event in self.events if event.run_id == run_id]
-
